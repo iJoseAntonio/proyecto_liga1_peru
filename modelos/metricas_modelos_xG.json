@@ -1,0 +1,39 @@
+{
+  "xg": {
+    "label": "xG ≥ 1.5",
+    "modelos": [
+      {
+        "nombre": "XGBoost",
+        "accuracy": 0.6777,
+        "auc_roc": 0.6491,
+        "f1": 0.531,
+        "precision": 0.5746,
+        "recall": 0.4936
+      },
+      {
+        "nombre": "LightGBM",
+        "accuracy": 0.6872,
+        "auc_roc": 0.6346,
+        "f1": 0.5075,
+        "precision": 0.6071,
+        "recall": 0.4359
+      },
+      {
+        "nombre": "Random Forest",
+        "accuracy": 0.6564,
+        "auc_roc": 0.6287,
+        "f1": 0.5085,
+        "precision": 0.5396,
+        "recall": 0.4808
+      },
+      {
+        "nombre": "Logistic Regression",
+        "accuracy": 0.6469,
+        "auc_roc": 0.6791,
+        "f1": 0.5918,
+        "precision": 0.5167,
+        "recall": 0.6923
+      }
+    ]
+  }
+}

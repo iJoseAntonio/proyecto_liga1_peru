@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="referrer" content="no-referrer">
+  <title>Liga 1 Perú 2026</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="page-wrap">
+
+  <!-- ── HEADER ── -->
+  <div class="header-wrap">
+    <header class="header">
+      <div class="header-logo-wrap">
+        <img class="header-logo"
+             src="https://img.sofascore.com/api/v1/unique-tournament/406/image"
+             alt="Liga 1">
+      </div>
+      <div class="header-info">
+        <h1>Liga 1</h1>
+        <div class="meta">
+          <img class="flag"
+               src="https://img.sofascore.com/api/v1/country/PE/flag"
+               alt="PE">
+          <span class="country">Perú</span>
+          <span class="season-label">2026</span>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-bar"><div class="progress-fill"></div></div>
+          <div class="progress-dates"><span>29 ene</span><span>29 nov</span></div>
+        </div>
+      </div>
+    </header>
+  </div>
+
+  <!-- ── LAYOUT ── -->
+  <div class="layout">
+
+    <!-- ── LEFT PANEL ── -->
+    <aside class="left-panel">
+
+      <!-- Destacado -->
+      <div class="destacado">
+        <div class="destacado-title">DESTACADO</div>
+        <div class="match-feature" id="destacado-match"></div>
+      </div>
+
+      <!-- Partidos -->
+      <div class="partidos-section">
+        <div class="partidos-header">
+          <div class="partidos-title">Partidos</div>
+          <div class="jornada-nav">
+            <button class="nav-arrow" id="btn-prev">&#8249;</button>
+            <select class="jornada-select" id="round-select"></select>
+            <button class="nav-arrow" id="btn-next">&#8250;</button>
+          </div>
+        </div>
+        <div class="match-group">
+          <div class="match-group-header">
+            <img src="https://img.sofascore.com/api/v1/unique-tournament/406/image" alt="L1">
+            <span>Liga 1, Apertura</span>
+          </div>
+          <div id="matches-list"></div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ── RIGHT PANEL ── -->
+    <main class="right-panel">
+
+      <!-- Main tabs -->
+      <nav class="main-tabs">
+        <div class="main-tab active" data-tab="clasificaciones">Clasificaciones</div>
+        <div class="main-tab" data-tab="estadisticas">Estadísticas</div>
+        <div class="main-tab" data-tab="predicciones">Predicciones</div>
+        <div class="main-tab" data-tab="rendimiento">Rendimiento</div>
+      </nav>
+
+      <!-- Clasificaciones panel -->
+      <div id="tab-clasificaciones" class="tab-content active">
+        <div class="clas-header">
+          <div class="clas-dropdown">
+            <img src="https://img.sofascore.com/api/v1/unique-tournament/406/image" alt="L1">
+            <span>Liga 1 2026</span>
+            <span class="arrow">▼</span>
+          </div>
+        </div>
+        <div class="sub-tabs">
+          <div class="sub-tab-wrap">
+            <button class="sub-tab active" data-filter="all">Todos</button>
+            <button class="sub-tab" data-filter="home">Local</button>
+            <button class="sub-tab" data-filter="away">Visitante</button>
+          </div>
+        </div>
+
+        <!-- Loading state -->
+        <div id="table-loading" class="loading-state">
+          <div class="spinner"></div>
+          <span>Cargando tabla...</span>
+        </div>
+
+        <!-- Error state -->
+        <div id="table-error" class="error-state" style="display:none">
+          <span>⚠️ No se pudo cargar el CSV.</span>
+          <button onclick="loadCSV()">Reintentar</button>
+        </div>
+
+        <!-- Table -->
+        <div class="table-wrap" id="table-wrap" style="display:none">
+          <div class="table-head">
+            <span></span>
+            <span class="th">#</span>
+            <span class="th left">Equipo</span>
+            <span class="th" title="Partidos Jugados">PJ</span>
+            <span class="th" title="Partidos Ganados">PG</span>
+            <span class="th" title="Partidos Empatados">PE</span>
+            <span class="th" title="Partidos Perdidos">PP</span>
+            <span class="th" title="Diferencia de Goles">DIF</span>
+            <span class="th" title="Goles a Favor:En Contra">Goles</span>
+            <span class="th" style="text-align:center">Últimos 5</span>
+            <span class="th">Pts</span>
+          </div>
+          <div id="standings-table"></div>
+          <div class="legend-row">
+            <div class="leg-item"><div class="leg-dot playoff-dot"></div>Play-offs</div>
+            <div class="leg-item"><div class="leg-dot relegation-dot"></div>Descenso</div>
+            <div class="leg-item"><div class="fb w" style="width:10px;height:10px"></div>Victoria</div>
+            <div class="leg-item"><div class="fb e" style="width:10px;height:10px"></div>Empate</div>
+            <div class="leg-item"><div class="fb d" style="width:10px;height:10px"></div>Derrota</div>
+          </div>
+          <div class="col-legend">
+            <span><b>PJ</b> Jugados</span>
+            <span><b>PG</b> Ganados</span>
+            <span><b>PE</b> Empatados</span>
+            <span><b>PP</b> Perdidos</span>
+            <span><b>DIF</b> Diferencia de Goles</span>
+            <span><b>Pts</b> Puntos</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Estadísticas panel -->
+      <div id="tab-estadisticas" class="tab-content"></div>
+
+      <!-- Predicciones panel -->
+      <div id="tab-predicciones" class="tab-content">
+        <div class="pred-tab-header">
+          <span class="pred-tab-title" id="pred-tab-round"></span>
+          <div class="pred-abbr-legend">
+            <span><b>XG</b> Goles Esperados</span>
+            <span><b>GA</b> Goles Anotados</span>
+            <span><b>TP</b> Tiros a Puerta</span>
+          </div>
+        </div>
+        <div id="pred-tab-content"></div>
+      </div>
+
+      <!-- Rendimiento panel -->
+      <div id="tab-rendimiento" class="tab-content"></div>
+
+    </main>
+  </div>
+
+  </div><!-- /.page-wrap -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

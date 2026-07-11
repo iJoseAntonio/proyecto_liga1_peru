@@ -1,0 +1,39 @@
+{
+  "tiros": {
+    "label": "Tiros ≥ 5",
+    "modelos": [
+      {
+        "nombre": "XGBoost",
+        "accuracy": 0.6422,
+        "auc_roc": 0.6511,
+        "f1": 0.5698,
+        "precision": 0.5556,
+        "recall": 0.5848
+      },
+      {
+        "nombre": "LightGBM",
+        "accuracy": 0.6564,
+        "auc_roc": 0.6418,
+        "f1": 0.5845,
+        "precision": 0.573,
+        "recall": 0.5965
+      },
+      {
+        "nombre": "Random Forest",
+        "accuracy": 0.6303,
+        "auc_roc": 0.6289,
+        "f1": 0.5491,
+        "precision": 0.5429,
+        "recall": 0.5556
+      },
+      {
+        "nombre": "Logistic Regression",
+        "accuracy": 0.609,
+        "auc_roc": 0.6434,
+        "f1": 0.5692,
+        "precision": 0.5142,
+        "recall": 0.6374
+      }
+    ]
+  }
+}

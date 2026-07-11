@@ -1,0 +1,12 @@
+fastapi==0.111.0
+uvicorn==0.29.0
+pandas==2.2.2
+numpy==1.26.4
+scikit-learn==1.4.2
+xgboost==2.0.3
+imbalanced-learn==0.12.3
+joblib==1.4.2
+optuna==3.6.1
+shap==0.45.1
+python-multipart==0.0.9
+slowapi==0.1.9

@@ -1,0 +1,233 @@
+{
+  "xg": [
+    {
+      "variable": "Local",
+      "importancia": 0.37051,
+      "direccion": -0.00226
+    },
+    {
+      "variable": "Atajadas_prom_3",
+      "importancia": 0.10069,
+      "direccion": -0.03572
+    },
+    {
+      "variable": "Disparos al palo_prom_3",
+      "importancia": 0.07206,
+      "direccion": -0.06201
+    },
+    {
+      "variable": "Tiros a puerta_prom_5",
+      "importancia": 0.06945,
+      "direccion": -0.00371
+    },
+    {
+      "variable": "Goles esperados (xG)_prom_5",
+      "importancia": 0.04747,
+      "direccion": 0.00471
+    },
+    {
+      "variable": "Posesión de pelota_prom_5",
+      "importancia": 0.04514,
+      "direccion": -0.00383
+    },
+    {
+      "variable": "Tiros adentro del area_prom_5",
+      "importancia": 0.02841,
+      "direccion": 0.0047
+    },
+    {
+      "variable": "Disparos al palo_prom_5",
+      "importancia": 0.02795,
+      "direccion": -0.01247
+    },
+    {
+      "variable": "conversion_xg_prom_5",
+      "importancia": 0.02141,
+      "direccion": -0.00207
+    },
+    {
+      "variable": "Tarjetas rojas_prom_3",
+      "importancia": 0.01974,
+      "direccion": -0.01165
+    },
+    {
+      "variable": "ratio_area_prom_5",
+      "importancia": 0.01832,
+      "direccion": 0.004
+    },
+    {
+      "variable": "conversion_xg_prom_3",
+      "importancia": 0.01793,
+      "direccion": -0.00028
+    },
+    {
+      "variable": "Tiros a puerta_prom_3",
+      "importancia": 0.0178,
+      "direccion": 0.00053
+    },
+    {
+      "variable": "goles_prom_5",
+      "importancia": 0.01757,
+      "direccion": -0.00097
+    },
+    {
+      "variable": "Tarjetas amarillas_prom_5",
+      "importancia": 0.01705,
+      "direccion": 0.00298
+    }
+  ],
+  "tiros": [
+    {
+      "variable": "Local",
+      "importancia": 0.26921,
+      "direccion": 0.01081
+    },
+    {
+      "variable": "Despejes_prom_5",
+      "importancia": 0.09679,
+      "direccion": -0.08722
+    },
+    {
+      "variable": "goles_prom_5",
+      "importancia": 0.05372,
+      "direccion": -0.00573
+    },
+    {
+      "variable": "conversion_xg_prom_3",
+      "importancia": 0.04251,
+      "direccion": 0.00321
+    },
+    {
+      "variable": "Pases al ultimo tercio_prom_5",
+      "importancia": 0.04091,
+      "direccion": -0.00698
+    },
+    {
+      "variable": "Tiros a puerta_prom_5",
+      "importancia": 0.03392,
+      "direccion": -0.00152
+    },
+    {
+      "variable": "ratio_area_prom_5",
+      "importancia": 0.03308,
+      "direccion": -0.00137
+    },
+    {
+      "variable": "Atajadas_prom_3",
+      "importancia": 0.03036,
+      "direccion": -0.00542
+    },
+    {
+      "variable": "Corners_prom_5",
+      "importancia": 0.02847,
+      "direccion": -0.00571
+    },
+    {
+      "variable": "goles_prom_3",
+      "importancia": 0.02752,
+      "direccion": -0.00905
+    },
+    {
+      "variable": "Tiros libres_prom_5",
+      "importancia": 0.02652,
+      "direccion": -0.00706
+    },
+    {
+      "variable": "Tarjetas rojas_prom_5",
+      "importancia": 0.0259,
+      "direccion": -0.0122
+    },
+    {
+      "variable": "Goles esperados (xG)_prom_5",
+      "importancia": 0.02356,
+      "direccion": 0.00365
+    },
+    {
+      "variable": "precision_pases_prom_5",
+      "importancia": 0.02344,
+      "direccion": 0.00785
+    },
+    {
+      "variable": "Tiros libres_prom_3",
+      "importancia": 0.0215,
+      "direccion": -0.00433
+    }
+  ],
+  "goles": [
+    {
+      "variable": "goles_prom_5",
+      "importancia": 0.18444,
+      "direccion": -0.01783
+    },
+    {
+      "variable": "Local",
+      "importancia": 0.1677,
+      "direccion": 0.00173
+    },
+    {
+      "variable": "Tarjetas rojas_prom_3",
+      "importancia": 0.11679,
+      "direccion": -0.086
+    },
+    {
+      "variable": "Entradas_prom_3",
+      "importancia": 0.05606,
+      "direccion": 0.01438
+    },
+    {
+      "variable": "Goles esperados (xG)_prom_5",
+      "importancia": 0.05325,
+      "direccion": -0.00173
+    },
+    {
+      "variable": "Disparos al palo_prom_3",
+      "importancia": 0.05234,
+      "direccion": -0.03396
+    },
+    {
+      "variable": "Tiros a puerta_prom_5",
+      "importancia": 0.05132,
+      "direccion": -0.00683
+    },
+    {
+      "variable": "Pases al ultimo tercio_prom_3",
+      "importancia": 0.05021,
+      "direccion": 0.00358
+    },
+    {
+      "variable": "Despejes_prom_5",
+      "importancia": 0.0489,
+      "direccion": -0.04551
+    },
+    {
+      "variable": "goles_prom_3",
+      "importancia": 0.04584,
+      "direccion": -0.03237
+    },
+    {
+      "variable": "Posesión de pelota_prom_5",
+      "importancia": 0.03824,
+      "direccion": -0.00528
+    },
+    {
+      "variable": "Fueras de juego_prom_5",
+      "importancia": 0.03729,
+      "direccion": -0.00791
+    },
+    {
+      "variable": "Despejes_prom_3",
+      "importancia": 0.03504,
+      "direccion": -0.02583
+    },
+    {
+      "variable": "Tarjetas amarillas_prom_3",
+      "importancia": 0.03449,
+      "direccion": -0.01112
+    },
+    {
+      "variable": "Tiros totales_prom_3",
+      "importancia": 0.0307,
+      "direccion": 0.00719
+    }
+  ]
+}
