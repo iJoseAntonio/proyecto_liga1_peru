@@ -6,8 +6,8 @@
 'use strict';
 
 // ── CONFIGURACIÓN ────────────────────────────────────────────────────────
-const CSV_PATH         = 'tabla_liga1_peru.csv';
-const MATCHES_CSV_PATH = 'partidos_liga1_2026.csv';
+const CSV_PATH         = 'data/tabla_liga1_peru.csv';
+const MATCHES_CSV_PATH = 'data/partidos_liga1_2026.csv';
 // Reemplaza con tu URL de Render una vez desplegado:
 const API_URL          = 'https://api.data-sport.win';
 
