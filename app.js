@@ -8,8 +8,7 @@
 // ── CONFIGURACIÓN ────────────────────────────────────────────────────────
 const CSV_PATH         = 'data/tabla_liga1_peru.csv';
 const MATCHES_CSV_PATH = 'data/partidos_liga1_2026.csv';
-// Reemplaza con tu URL de Render una vez desplegado:
-const API_URL          = 'https://api.data-sport.win';
+const API_URL          = 'https://proyecto-liga1-peru.onrender.com';
 
 // Map de nombres de equipos del CSV → ID de Sofascore para los escudos
 const TEAM_IDS = {
