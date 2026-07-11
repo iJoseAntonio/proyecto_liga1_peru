@@ -36,7 +36,7 @@ app.add_middleware(
 MODEL_XG_PATH    = "Hiperparametros_Finales/Goles_Esperadas/modelo_xgboost_xg.pkl"
 MODEL_TIROS_PATH = "Hiperparametros_Finales/Tiros_Puerta/modelo_xgboost_tiros.pkl"
 MODEL_GOLES_PATH = "Hiperparametros_Finales/Goles/modelo_xgboost_liga1_goles.pkl"
-DATA_PATH        = "bd_liga1.csv"
+DATA_PATH        = "data/bd_liga1.csv"
 
 modelo_xg      = None
 modelo_tiros   = None
