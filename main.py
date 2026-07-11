@@ -9,6 +9,10 @@ import numpy as np
 import os
 import re
 import json
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+from sklearn.metrics import silhouette_score
 
 limiter = Limiter(key_func=get_remote_address)
 
@@ -38,6 +42,8 @@ modelo_tiros   = None
 modelo_goles   = None
 df_historico   = None
 _perf_by_round = []
+_eda_data        = {}
+_clustering_data = {}
 
 # Columnas raw a extraer del CSV
 COLS_STATS_CSV = [
@@ -66,6 +72,19 @@ FEATURES_FINAL = (
     [f'{col}_prom_5' for col in COLS_PARA_ROLLING] +
     ['Local']
 )
+
+# Panel 1 — EDA: variables ofensivas/disciplinarias clave a nivel equipo-partido
+EDA_COLS = [
+    'goles', 'Posesión de pelota', 'Goles esperados (xG)', 'Tiros totales',
+    'Tiros a puerta', 'Corners', 'Faltas', 'Tarjetas amarillas',
+]
+
+# Panel 1 — Clustering: perfil ofensivo/defensivo promedio por equipo
+CLUSTER_COLS = [
+    'goles', 'Posesión de pelota', 'Goles esperados (xG)', 'Tiros totales',
+    'Tiros a puerta', 'Tiros adentro del area', 'Corners', 'Faltas',
+    'Tarjetas amarillas', 'Entradas', 'Intercepciones', 'Despejes',
+]
 
 
 @app.on_event("startup")
@@ -103,6 +122,8 @@ def cargar_recursos():
         print(f"ADVERTENCIA: {DATA_PATH} no encontrado.")
 
     _precompute_performance()
+    _precompute_eda()
+    _precompute_clustering()
 
 
 def _build_team_df(team_name: str, df_fuente: pd.DataFrame) -> pd.DataFrame | None:
@@ -296,6 +317,216 @@ def _precompute_performance():
     print(f"Rendimiento precomputado: {len(rounds_out)} rondas, {len(records)} predicciones.")
 
 
+def _long_team_match_df(df_fuente: pd.DataFrame) -> pd.DataFrame:
+    """Reestructura el histórico a una fila por equipo por partido (local + visitante)."""
+    frames = []
+    for sfx in ['_local', '_visitante']:
+        sub = pd.DataFrame(index=df_fuente.index)
+        for col in COLS_STATS_CSV:
+            colname = f'{col}{sfx}'
+            sub[col] = pd.to_numeric(df_fuente[colname], errors='coerce') if colname in df_fuente.columns else np.nan
+        frames.append(sub)
+    return pd.concat(frames, ignore_index=True)
+
+
+def _precompute_eda():
+    """Panel 1 — EDA: estadísticas descriptivas, histogramas, boxplots (outliers 1.5·IQR) y correlación."""
+    global _eda_data
+    if df_historico is None or df_historico.empty:
+        return
+
+    df_long = _long_team_match_df(df_historico)
+
+    variables = {}
+    for col in EDA_COLS:
+        serie = df_long[col].dropna()
+        if serie.empty:
+            continue
+        q1, med, q3 = serie.quantile([0.25, 0.5, 0.75])
+        iqr = q3 - q1
+        low_fence, high_fence = q1 - 1.5 * iqr, q3 + 1.5 * iqr
+        outliers = serie[(serie < low_fence) | (serie > high_fence)]
+        inside = serie[(serie >= low_fence) & (serie <= high_fence)]
+        whisker_low  = float(inside.min()) if not inside.empty else float(serie.min())
+        whisker_high = float(inside.max()) if not inside.empty else float(serie.max())
+
+        counts, edges = np.histogram(serie, bins=10)
+
+        variables[col] = {
+            'stats': {
+                'count':  int(serie.count()),
+                'mean':   round(float(serie.mean()), 2),
+                'std':    round(float(serie.std()), 2),
+                'min':    round(float(serie.min()), 2),
+                'q1':     round(float(q1), 2),
+                'median': round(float(med), 2),
+                'q3':     round(float(q3), 2),
+                'max':    round(float(serie.max()), 2),
+            },
+            'histogram': {
+                'bins':   [round(float(e), 2) for e in edges],
+                'counts': [int(c) for c in counts],
+            },
+            'boxplot': {
+                'min':           round(float(serie.min()), 2),
+                'q1':            round(float(q1), 2),
+                'median':        round(float(med), 2),
+                'q3':            round(float(q3), 2),
+                'max':           round(float(serie.max()), 2),
+                'whisker_low':   round(whisker_low, 2),
+                'whisker_high':  round(whisker_high, 2),
+                'outlier_count': int(len(outliers)),
+                'outlier_pct':   round(len(outliers) / len(serie) * 100, 1),
+            },
+        }
+
+    corr_df = df_long[EDA_COLS].dropna()
+    corr = corr_df.corr(method='pearson').round(3)
+
+    _eda_data = {
+        'n_observaciones': int(len(df_long)),
+        'variables':       variables,
+        'correlacion': {
+            'labels': EDA_COLS,
+            'matriz': corr.values.tolist(),
+        },
+    }
+    print(f"EDA precomputado: {len(variables)} variables, {len(df_long)} observaciones equipo-partido.")
+
+
+def _valid_current_teams() -> set:
+    path = "partidos_liga1_2026.csv"
+    if not os.path.exists(path):
+        return set()
+    try:
+        df_p = pd.read_csv(path, sep=';', encoding='utf-8-sig')
+        df_p.columns = df_p.columns.str.strip()
+        return (
+            set(df_p['equipo_local'].str.strip().dropna()) |
+            set(df_p['equipo_visitante'].str.strip().dropna())
+        )
+    except Exception as e:
+        print(f"Error cargando equipos vigentes: {e}")
+        return set()
+
+
+def _team_profile_df() -> pd.DataFrame | None:
+    """Perfil ofensivo/defensivo promedio por equipo vigente, usando todo el histórico disponible."""
+    if df_historico is None or df_historico.empty:
+        return None
+
+    valid_teams = _valid_current_teams()
+
+    teams: dict = {}
+    for _, row in df_historico.iterrows():
+        for team, sfx in [(row.get('equipo_local'), '_local'), (row.get('equipo_visitante'), '_visitante')]:
+            if not team or (valid_teams and team not in valid_teams):
+                continue
+            if team not in teams:
+                teams[team] = {c: [] for c in CLUSTER_COLS}
+            for col in CLUSTER_COLS:
+                v = pd.to_numeric(row.get(f'{col}{sfx}', 0), errors='coerce')
+                if pd.notna(v):
+                    teams[team][col].append(v)
+
+    rows = []
+    for team, cols in teams.items():
+        if len(cols['goles']) < 5:  # muestra mínima para un promedio estable
+            continue
+        row = {'equipo': team}
+        for c in CLUSTER_COLS:
+            row[c] = float(np.mean(cols[c])) if cols[c] else 0.0
+        rows.append(row)
+
+    if len(rows) < 4:
+        return None
+    return pd.DataFrame(rows)
+
+
+def _precompute_clustering():
+    """Panel 1 — Clustering: K-means (k=2..8) con método del codo + coeficiente de silueta."""
+    global _clustering_data
+    df_teams = _team_profile_df()
+    if df_teams is None:
+        print("Clustering: datos insuficientes.")
+        return
+
+    X = df_teams[CLUSTER_COLS].values
+    X_scaled = StandardScaler().fit_transform(X)
+
+    n = len(df_teams)
+    max_k = min(8, n - 1)
+    curve = []
+    best_k, best_sil = 2, -1.0
+    for k in range(2, max_k + 1):
+        km = KMeans(n_clusters=k, random_state=42, n_init=10).fit(X_scaled)
+        sil = float(silhouette_score(X_scaled, km.labels_))
+        curve.append({'k': k, 'inercia': round(float(km.inertia_), 2), 'silueta': round(sil, 4)})
+        if sil > best_sil:
+            best_sil, best_k = sil, k
+
+    km_final = KMeans(n_clusters=best_k, random_state=42, n_init=10).fit(X_scaled)
+    df_teams = df_teams.copy()
+    df_teams['cluster'] = km_final.labels_
+
+    coords = PCA(n_components=2, random_state=42).fit_transform(X_scaled)
+    df_teams['pca_x'] = coords[:, 0]
+    df_teams['pca_y'] = coords[:, 1]
+
+    # Etiquetas legibles por nivel ofensivo relativo (goles + xG), válidas para cualquier k
+    ofensive_rank = (
+        df_teams.groupby('cluster')[['goles', 'Goles esperados (xG)']]
+        .mean().sum(axis=1).sort_values(ascending=False)
+    )
+    rank_labels = [
+        'Ofensivo Muy Alto', 'Ofensivo Alto', 'Ofensivo Medio-Alto', 'Ofensivo Medio',
+        'Ofensivo Medio-Bajo', 'Ofensivo Bajo', 'Ofensivo Muy Bajo', 'Ofensivo Mínimo',
+    ]
+    cluster_label = {
+        int(cl): (rank_labels[i] if i < len(rank_labels) else f'Cluster {cl}')
+        for i, cl in enumerate(ofensive_rank.index)
+    }
+
+    teams_out = [
+        {
+            'equipo':    r['equipo'],
+            'cluster':   int(r['cluster']),
+            'label':     cluster_label[int(r['cluster'])],
+            'x':         round(float(r['pca_x']), 3),
+            'y':         round(float(r['pca_y']), 3),
+            'goles_avg': round(float(r['goles']), 2),
+            'xg_avg':    round(float(r['Goles esperados (xG)']), 2),
+            'tiros_avg': round(float(r['Tiros a puerta']), 2),
+        }
+        for _, r in df_teams.iterrows()
+    ]
+
+    profiles = []
+    for cl, g in df_teams.groupby('cluster'):
+        profiles.append({
+            'cluster':    int(cl),
+            'label':      cluster_label[int(cl)],
+            'size':       int(len(g)),
+            'equipos':    sorted(g['equipo'].tolist()),
+            'goles_avg':  round(float(g['goles'].mean()), 2),
+            'xg_avg':     round(float(g['Goles esperados (xG)'].mean()), 2),
+            'tiros_avg':  round(float(g['Tiros a puerta'].mean()), 2),
+            'faltas_avg': round(float(g['Faltas'].mean()), 2),
+        })
+    profiles.sort(key=lambda p: p['goles_avg'], reverse=True)
+
+    _clustering_data = {
+        'n_equipos':     n,
+        'features':      CLUSTER_COLS,
+        'curva_codo':    curve,
+        'best_k':        best_k,
+        'silueta_best':  round(best_sil, 4),
+        'teams':         teams_out,
+        'perfiles':      profiles,
+    }
+    print(f"Clustering precomputado: {n} equipos, k óptimo={best_k} (silueta={best_sil:.3f}).")
+
+
 @app.get("/")
 @limiter.limit("60/minute")
 def root(request: Request):
@@ -435,18 +666,7 @@ def team_rankings(request: Request):
     if df_historico is None:
         raise HTTPException(status_code=503, detail="Datos no disponibles")
 
-    valid_teams: set = set()
-    partidos_path = "partidos_liga1_2026.csv"
-    if os.path.exists(partidos_path):
-        try:
-            df_p = pd.read_csv(partidos_path, sep=';', encoding='utf-8-sig')
-            df_p.columns = df_p.columns.str.strip()
-            valid_teams = (
-                set(df_p['equipo_local'].str.strip().dropna()) |
-                set(df_p['equipo_visitante'].str.strip().dropna())
-            )
-        except Exception as e:
-            print(f"team-rankings: error cargando partidos CSV: {e}")
+    valid_teams = _valid_current_teams()
 
     df_2026 = df_historico[df_historico['fecha'].dt.year == 2026]
 
@@ -539,3 +759,19 @@ def model_performance(request: Request):
         },
         "rounds": _perf_by_round,
     }
+
+
+@app.get("/eda-summary")
+@limiter.limit("60/minute")
+def eda_summary(request: Request):
+    if not _eda_data:
+        raise HTTPException(status_code=503, detail="EDA no disponible")
+    return _eda_data
+
+
+@app.get("/clustering")
+@limiter.limit("60/minute")
+def clustering_endpoint(request: Request):
+    if not _clustering_data:
+        raise HTTPException(status_code=503, detail="Clustering no disponible")
+    return _clustering_data

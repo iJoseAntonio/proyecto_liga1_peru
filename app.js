@@ -57,6 +57,7 @@ let standingsData = [];
 const predCache   = {};
 let _statsLoaded  = false;
 let _rendLoaded   = false;
+let _edaLoaded    = false;
 
 // ── DOM REFS ─────────────────────────────────────────────────────────────
 const $standingsTable = () => document.getElementById('standings-table');
@@ -515,6 +516,7 @@ function setupMainTabs() {
       if (name === 'predicciones') renderPredictionsTab(currentRound);
       if (name === 'estadisticas' && !_statsLoaded) { renderEstadisticasTab(); _statsLoaded = true; }
       if (name === 'rendimiento'  && !_rendLoaded)  { renderRendimientoTab();  _rendLoaded  = true; }
+      if (name === 'eda'          && !_edaLoaded)   { renderEdaTab();          _edaLoaded   = true; }
     });
   });
 }
@@ -984,6 +986,415 @@ function renderShapChart(target, shapData) {
   // Actualizar texto del botón
   const btn = document.getElementById('shap-sort-btn');
   if (btn) btn.textContent = _shapAsc ? '↑ Asc' : '↓ Desc';
+}
+
+// ── EDA & CLUSTERING TAB ─────────────────────────────────────────────────
+let _edaHistChart    = null;
+let _edaElbowChart   = null;
+let _edaSilChart     = null;
+let _edaScatterChart = null;
+
+// Paleta categórica validada (CVD-safe, banda de luminosidad para superficie oscura)
+const CLUSTER_COLORS = ['#a8791f', '#2e6fb0', '#009E73', '#c0392b', '#9450c9', '#b8407a'];
+const CLUSTER_SHAPES = ['circle', 'triangle', 'rect', 'rectRot', 'star', 'cross', 'rectRounded', 'crossRot'];
+const clusterColor = i => CLUSTER_COLORS[i % CLUSTER_COLORS.length];
+const clusterShape = i => CLUSTER_SHAPES[i % CLUSTER_SHAPES.length];
+
+function renderEdaHistogram(varKey, edaData) {
+  if (_edaHistChart) { _edaHistChart.destroy(); _edaHistChart = null; }
+  const canvas = document.getElementById('eda-hist-chart');
+  const v = edaData.variables[varKey];
+  if (!canvas || !v) return;
+
+  const bins   = v.histogram.bins;
+  const labels = bins.slice(0, -1).map((b, i) => `${b}–${bins[i + 1]}`);
+
+  _edaHistChart = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data: v.histogram.counts,
+        backgroundColor: hexToRgba('#6c63ff', 0.75),
+        borderRadius: 4,
+        borderSkipped: false,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend:  { display: false },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.raw} partidos-equipo` } },
+      },
+      scales: {
+        x: {
+          grid:   { display: false },
+          ticks:  { color: '#f0f0f0', font: { size: 9 }, maxRotation: 45, minRotation: 45 },
+          border: { color: 'rgba(255,255,255,0.3)' },
+        },
+        y: {
+          beginAtZero: true,
+          grid:   { color: 'rgba(255,255,255,0.1)' },
+          ticks:  { color: '#f0f0f0', font: { size: 10 } },
+          border: { color: 'rgba(255,255,255,0.3)' },
+        },
+      },
+    },
+  });
+}
+
+function renderEdaBoxplot(varKey, edaData) {
+  const wrap = document.getElementById('eda-boxplot-wrap');
+  const v = edaData.variables[varKey];
+  if (!wrap || !v) return;
+
+  const b = v.boxplot;
+  const lo   = Math.min(b.min, b.whisker_low);
+  const hi   = Math.max(b.max, b.whisker_high);
+  const span = (hi - lo) || 1;
+  const pct  = x => ((x - lo) / span * 100).toFixed(1);
+
+  wrap.innerHTML = `
+    <div class="eda-boxplot">
+      <div class="eda-boxplot-track" style="left:${pct(b.whisker_low)}%; right:${(100 - pct(b.whisker_high))}%"></div>
+      <div class="eda-boxplot-cap" style="left:${pct(b.whisker_low)}%"></div>
+      <div class="eda-boxplot-cap" style="left:${pct(b.whisker_high)}%"></div>
+      <div class="eda-boxplot-box" style="left:${pct(b.q1)}%; right:${(100 - pct(b.q3))}%"></div>
+      <div class="eda-boxplot-median" style="left:${pct(b.median)}%"></div>
+    </div>
+    <div class="eda-boxplot-labels">
+      <span>Mín ${b.whisker_low}</span>
+      <span>Q1 ${b.q1}</span>
+      <span class="eda-boxplot-median-label">Mediana ${b.median}</span>
+      <span>Q3 ${b.q3}</span>
+      <span>Máx ${b.whisker_high}</span>
+    </div>
+    <div class="eda-boxplot-outliers">
+      ⚠ ${b.outlier_count} valores atípicos (regla 1.5·IQR) — ${b.outlier_pct}% de las observaciones
+    </div>`;
+}
+
+function renderEdaStats(varKey, edaData) {
+  const row = document.getElementById('eda-stats-row');
+  const v = edaData.variables[varKey];
+  if (!row || !v) return;
+  const s = v.stats;
+  const items = [
+    ['n', s.count], ['Media', s.mean], ['Desv. Est.', s.std], ['Mín', s.min],
+    ['Q1', s.q1], ['Mediana', s.median], ['Q3', s.q3], ['Máx', s.max],
+  ];
+  row.innerHTML = items.map(([label, val]) => `
+    <div class="eda-stat-item">
+      <span class="eda-stat-value">${val}</span>
+      <span class="eda-stat-label">${label}</span>
+    </div>`).join('');
+}
+
+function renderEdaVariable(varKey, edaData) {
+  renderEdaHistogram(varKey, edaData);
+  renderEdaBoxplot(varKey, edaData);
+  renderEdaStats(varKey, edaData);
+}
+
+function corrColor(v) {
+  // Diverging: rojo (negativo) ↔ gris neutro (0) ↔ verde (positivo)
+  const t = Math.min(Math.abs(v), 1);
+  const neutral = [46, 46, 46];               // --surface3
+  const pole = v >= 0 ? [21, 177, 104]         // --green
+                       : [226, 75, 74];        // --red
+  const rgb = neutral.map((c, i) => Math.round(c + (pole[i] - c) * t));
+  return `rgb(${rgb.join(',')})`;
+}
+
+function renderCorrHeatmap(correlacion) {
+  const wrap = document.getElementById('eda-corr-heatmap');
+  if (!wrap) return;
+  const { labels, matriz } = correlacion;
+  const short = labels.map(l => formatShapVar(l));
+
+  let html = `<div class="eda-corr-grid" style="grid-template-columns:110px repeat(${labels.length}, 1fr)">`;
+  html += `<div></div>` + short.map(l => `<div class="eda-corr-head">${l}</div>`).join('');
+  matriz.forEach((row, i) => {
+    html += `<div class="eda-corr-head eda-corr-head-row">${short[i]}</div>`;
+    html += row.map((val, j) => `
+      <div class="eda-corr-cell" style="background:${corrColor(val)}" title="${short[i]} × ${short[j]}: ${val.toFixed(2)}">${val.toFixed(2)}</div>`).join('');
+  });
+  html += `</div>`;
+  wrap.innerHTML = html;
+}
+
+function renderElbowChart(clusData) {
+  if (_edaElbowChart) { _edaElbowChart.destroy(); _edaElbowChart = null; }
+  const canvas = document.getElementById('eda-elbow-chart');
+  if (!canvas) return;
+  const curve = clusData.curva_codo;
+
+  _edaElbowChart = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: curve.map(c => `k=${c.k}`),
+      datasets: [{
+        data: curve.map(c => c.inercia),
+        borderColor: '#6c63ff',
+        backgroundColor: hexToRgba('#6c63ff', 0.1),
+        borderWidth: 2,
+        pointRadius: curve.map(c => c.k === clusData.best_k ? 6 : 4),
+        pointBackgroundColor: curve.map(c => c.k === clusData.best_k ? '#15b168' : '#6c63ff'),
+        pointBorderColor: '#1e1e1e',
+        pointBorderWidth: 2,
+        tension: 0.25,
+        fill: true,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend:  { display: false },
+        tooltip: { callbacks: { label: ctx => ` Inercia: ${ctx.raw}` } },
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#f0f0f0', font: { size: 10 } }, border: { color: 'rgba(255,255,255,0.3)' } },
+        y: { grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: '#f0f0f0', font: { size: 10 } }, border: { color: 'rgba(255,255,255,0.3)' } },
+      },
+    },
+  });
+}
+
+function renderSilhouetteChart(clusData) {
+  if (_edaSilChart) { _edaSilChart.destroy(); _edaSilChart = null; }
+  const canvas = document.getElementById('eda-sil-chart');
+  if (!canvas) return;
+  const curve = clusData.curva_codo;
+
+  _edaSilChart = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: curve.map(c => `k=${c.k}`),
+      datasets: [{
+        data: curve.map(c => c.silueta),
+        borderColor: '#15b168',
+        backgroundColor: hexToRgba('#15b168', 0.1),
+        borderWidth: 2,
+        pointRadius: curve.map(c => c.k === clusData.best_k ? 6 : 4),
+        pointBackgroundColor: curve.map(c => c.k === clusData.best_k ? '#15b168' : '#38bdf8'),
+        pointBorderColor: '#1e1e1e',
+        pointBorderWidth: 2,
+        tension: 0.25,
+        fill: true,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend:  { display: false },
+        tooltip: { callbacks: { label: ctx => ` Silueta: ${ctx.raw}` } },
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#f0f0f0', font: { size: 10 } }, border: { color: 'rgba(255,255,255,0.3)' } },
+        y: { min: -1, max: 1, grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: '#f0f0f0', font: { size: 10 } }, border: { color: 'rgba(255,255,255,0.3)' } },
+      },
+    },
+  });
+}
+
+function renderClusterScatter(clusData) {
+  if (_edaScatterChart) { _edaScatterChart.destroy(); _edaScatterChart = null; }
+  const canvas = document.getElementById('eda-cluster-scatter');
+  if (!canvas) return;
+
+  const byCluster = {};
+  clusData.teams.forEach(t => {
+    (byCluster[t.cluster] ||= []).push(t);
+  });
+
+  const datasets = Object.entries(byCluster).map(([cl, teams]) => {
+    const idx = parseInt(cl, 10);
+    const col = clusterColor(idx);
+    return {
+      label:           teams[0].label,
+      data:            teams.map(t => ({ x: t.x, y: t.y, equipo: t.equipo })),
+      backgroundColor: hexToRgba(col, 0.85),
+      borderColor:     '#1e1e1e',
+      borderWidth:     2,
+      pointStyle:      clusterShape(idx),
+      radius:          6,
+      hoverRadius:     8,
+      hitRadius:       10,
+    };
+  });
+
+  _edaScatterChart = new Chart(canvas, {
+    type: 'scatter',
+    data: { datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display:  true,
+          position: 'bottom',
+          labels:   { color: '#f0f0f0', font: { size: 10 }, usePointStyle: true, boxWidth: 8 },
+        },
+        tooltip: {
+          callbacks: { label: ctx => ` ${ctx.raw.equipo} · ${ctx.dataset.label}` },
+        },
+      },
+      scales: {
+        x: {
+          title:  { display: true, text: 'Componente PCA 1', color: '#aaa', font: { size: 10 } },
+          grid:   { color: 'rgba(255,255,255,0.08)' },
+          ticks:  { color: '#aaa', font: { size: 9 } },
+          border: { color: 'rgba(255,255,255,0.3)' },
+        },
+        y: {
+          title:  { display: true, text: 'Componente PCA 2', color: '#aaa', font: { size: 10 } },
+          grid:   { color: 'rgba(255,255,255,0.08)' },
+          ticks:  { color: '#aaa', font: { size: 9 } },
+          border: { color: 'rgba(255,255,255,0.3)' },
+        },
+      },
+    },
+  });
+}
+
+function renderClusterProfiles(clusData) {
+  const wrap = document.getElementById('eda-cluster-profiles');
+  if (!wrap) return;
+  wrap.innerHTML = clusData.perfiles.map(p => {
+    const col = clusterColor(p.cluster);
+    return `
+      <div class="eda-profile-card">
+        <div class="eda-profile-head">
+          <span class="eda-profile-dot" style="background:${col}"></span>
+          <span class="eda-profile-label">${p.label}</span>
+          <span class="eda-profile-size">${p.size} equipos</span>
+        </div>
+        <div class="eda-profile-metrics">
+          <span>Goles/partido <b>${p.goles_avg}</b></span>
+          <span>xG/partido <b>${p.xg_avg}</b></span>
+          <span>Tiros a puerta <b>${p.tiros_avg}</b></span>
+          <span>Faltas <b>${p.faltas_avg}</b></span>
+        </div>
+        <div class="eda-profile-teams">${p.equipos.join(' · ')}</div>
+      </div>`;
+  }).join('');
+}
+
+async function renderEdaTab() {
+  const tabEl = document.getElementById('tab-eda');
+  if (!tabEl) return;
+
+  tabEl.innerHTML = `
+    <div class="rend-tab-wrap">
+      <div class="rend-sub-nav">
+        <div class="eda-sub-tabs">
+          <button class="eda-sub-tab active" data-section="vars">EDA</button>
+          <button class="eda-sub-tab" data-section="cluster">Clustering</button>
+        </div>
+      </div>
+      <div id="eda-tab-content">
+        <div class="loading-state"><div class="spinner"></div><span>Calculando...</span></div>
+      </div>
+    </div>`;
+
+  const content = document.getElementById('eda-tab-content');
+
+  try {
+    const [edaRes, clusRes] = await Promise.all([
+      fetch(`${API_URL}/eda-summary`),
+      fetch(`${API_URL}/clustering`),
+    ]);
+    if (!edaRes.ok) throw new Error();
+    const edaData  = await edaRes.json();
+    const clusData = clusRes.ok ? await clusRes.json() : null;
+
+    const varKeys = Object.keys(edaData.variables);
+
+    const varsHtml = `
+      <div class="eda-var-tabs">
+        ${varKeys.map((k, i) => `<button class="eda-var-tab${i === 0 ? ' active' : ''}" data-var="${k}">${formatShapVar(k)}</button>`).join('')}
+      </div>
+      <div class="comp-content">
+        <div class="eda-grid">
+          <div class="eda-card">
+            <p class="shap-chart-title">Distribución (Histograma)</p>
+            <div class="eda-chart-wrap"><canvas id="eda-hist-chart"></canvas></div>
+          </div>
+          <div class="eda-card">
+            <p class="shap-chart-title">Boxplot · Outliers (1.5·IQR)</p>
+            <div id="eda-boxplot-wrap" class="eda-boxplot-wrap"></div>
+          </div>
+        </div>
+        <div id="eda-stats-row" class="eda-stats-row"></div>
+        <div class="eda-card eda-corr-card">
+          <p class="shap-chart-title">Mapa de Correlación</p>
+          <div id="eda-corr-heatmap" class="eda-corr-heatmap"></div>
+        </div>
+      </div>
+      <div class="rend-meta">${edaData.n_observaciones.toLocaleString('es-PE')} observaciones equipo-partido · Liga 1 Perú 2023–2026</div>`;
+
+    let clusterHtml;
+    if (clusData) {
+      clusterHtml = `
+        <div class="comp-content">
+          <div class="eda-grid">
+            <div class="eda-card">
+              <p class="shap-chart-title">Método del Codo — Inercia por k</p>
+              <div class="eda-chart-wrap eda-chart-wrap-sm"><canvas id="eda-elbow-chart"></canvas></div>
+            </div>
+            <div class="eda-card">
+              <p class="shap-chart-title">Coeficiente de Silueta por k</p>
+              <div class="eda-chart-wrap eda-chart-wrap-sm"><canvas id="eda-sil-chart"></canvas></div>
+            </div>
+          </div>
+          <div class="rend-meta">k óptimo elegido por silueta: <b>${clusData.best_k}</b> (silueta = ${clusData.silueta_best}) · ${clusData.n_equipos} equipos vigentes</div>
+          <div class="eda-card">
+            <p class="shap-chart-title">Clusters de Equipos — Perfil Ofensivo (PCA 2D)</p>
+            <div class="eda-chart-wrap"><canvas id="eda-cluster-scatter"></canvas></div>
+          </div>
+          <div class="eda-profile-grid" id="eda-cluster-profiles"></div>
+        </div>`;
+    } else {
+      clusterHtml = `<div class="empty-tab">Sin datos de clustering disponibles</div>`;
+    }
+
+    content.innerHTML = `
+      <div id="eda-section-vars"    class="eda-section comp-section">${varsHtml}</div>
+      <div id="eda-section-cluster" class="eda-section comp-section" style="display:none">${clusterHtml}</div>`;
+
+    renderEdaVariable(varKeys[0], edaData);
+    renderCorrHeatmap(edaData.correlacion);
+
+    tabEl.querySelectorAll('.eda-var-tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        tabEl.querySelectorAll('.eda-var-tab').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        renderEdaVariable(btn.dataset.var, edaData);
+      });
+    });
+
+    tabEl.querySelectorAll('.eda-sub-tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        tabEl.querySelectorAll('.eda-sub-tab').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const target = btn.dataset.section;
+        tabEl.querySelectorAll('.eda-section').forEach(s => {
+          s.style.display = s.id === `eda-section-${target}` ? '' : 'none';
+        });
+        if (target === 'cluster' && clusData && !_edaElbowChart) {
+          renderElbowChart(clusData);
+          renderSilhouetteChart(clusData);
+          renderClusterScatter(clusData);
+          renderClusterProfiles(clusData);
+        }
+      });
+    });
+  } catch (_) {
+    content.innerHTML = '<div class="empty-tab">No se pudo cargar el EDA</div>';
+  }
 }
 
 // ── RENDIMIENTO TAB ────────────────────────────────────────────────────────
