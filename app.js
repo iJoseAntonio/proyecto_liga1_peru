@@ -563,6 +563,10 @@ async function renderPredictionsTab(round) {
 
   container.innerHTML = html;
 
+  if (!_predExplainDelegated) {
+    container.addEventListener('click', onPredExplainClick);
+    _predExplainDelegated = true;
+  }
 }
 
 function buildPredCardHTML(m, data, result = null) {
@@ -644,6 +648,10 @@ function buildPredCardHTML(m, data, result = null) {
       </div>
       <div class="pred-bars-stack">${barsHome(data.local)}</div>
       ${hReal}
+      <button class="pred-explain-btn" data-side="local" data-home="${m.homeName}" data-away="${m.awayName}" data-fecha="${m.rawDate || ''}">
+        ¿Por qué? <span class="pred-explain-icon">▾</span>
+      </button>
+      <div class="pred-explain-panel"></div>
     </div>
 
     <div class="pred-center">${centerHtml}</div>
@@ -656,7 +664,70 @@ function buildPredCardHTML(m, data, result = null) {
       </div>
       <div class="pred-bars-stack">${barsAway(data.visitante)}</div>
       ${aReal}
+      <button class="pred-explain-btn away" data-side="visitante" data-home="${m.homeName}" data-away="${m.awayName}" data-fecha="${m.rawDate || ''}">
+        ¿Por qué? <span class="pred-explain-icon">▾</span>
+      </button>
+      <div class="pred-explain-panel"></div>
     </div>`;
+}
+
+// ── SHAP LOCAL (explicación de una predicción concreta) ────────────────────
+let _predExplainDelegated = false;
+
+const EXPLAIN_TARGET_LABELS = { xg: 'Goles Esperados ≥ 1.5', tiros: 'Tiros a Puerta ≥ 5', goles: 'Goles ≥ 2' };
+
+function renderExplainPanel(teamData) {
+  return Object.entries(EXPLAIN_TARGET_LABELS).map(([key, label]) => {
+    const t = teamData[key];
+    const shap = t && t.shap_local;
+    if (!shap) return '';
+    const chips = shap.variables.slice(0, 4).map(v => {
+      const pos = v.shap >= 0;
+      return `<span class="shap-chip ${pos ? 'shap-chip-pos' : 'shap-chip-neg'}">${pos ? '▲' : '▼'} ${formatShapVar(v.variable)}</span>`;
+    }).join('');
+    return `
+      <div class="pred-explain-target">
+        <span class="pred-explain-target-label">${label} — ${t.probabilidad}%</span>
+        <div class="pred-explain-chips">${chips}</div>
+      </div>`;
+  }).join('');
+}
+
+async function onPredExplainClick(e) {
+  const btn = e.target.closest('.pred-explain-btn');
+  if (!btn) return;
+  const panel = btn.parentElement.querySelector('.pred-explain-panel');
+  if (!panel) return;
+
+  const isOpen = panel.classList.contains('open');
+  if (isOpen) {
+    panel.classList.remove('open');
+    btn.classList.remove('open');
+    return;
+  }
+  panel.classList.add('open');
+  btn.classList.add('open');
+
+  const { home, away, fecha, side } = btn.dataset;
+  const cacheKey = `${home}|${away}|${fecha}|explain`;
+  let data = predCache[cacheKey];
+
+  if (!data) {
+    panel.innerHTML = `<div class="pred-explain-loading">Calculando explicación SHAP…</div>`;
+    try {
+      const url = `${API_URL}/predict-match?home=${encodeURIComponent(home)}&away=${encodeURIComponent(away)}` +
+        (fecha ? `&fecha=${encodeURIComponent(fecha)}` : '') + `&explain=true`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error();
+      data = await res.json();
+      predCache[cacheKey] = data;
+    } catch (_) {
+      panel.innerHTML = `<div class="pred-explain-loading">No se pudo calcular la explicación</div>`;
+      return;
+    }
+  }
+
+  panel.innerHTML = renderExplainPanel(side === 'local' ? data.local : data.visitante);
 }
 
 // ── ESTADÍSTICAS TAB ──────────────────────────────────────────────────────
@@ -793,6 +864,40 @@ function hexToRgba(hex, alpha) {
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);
   return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function renderConfusionMatrix(target, modelName, confData) {
+  const wrap = document.getElementById('confusion-matrix-wrap');
+  if (!wrap || !confData || !confData[target]) return;
+
+  const modelos = confData[target].modelos;
+  const m = modelos.find(x => x.nombre === modelName) || modelos[0];
+  if (!m) return;
+
+  const total = m.tp + m.tn + m.fp + m.fn;
+  const pct = v => total ? ((v / total) * 100).toFixed(1) : '0.0';
+
+  wrap.innerHTML = `
+    <div class="confmat-grid">
+      <div class="confmat-corner"></div>
+      <div class="confmat-head">Predicho: Alto</div>
+      <div class="confmat-head">Predicho: Bajo</div>
+
+      <div class="confmat-head confmat-head-row">Real: Alto</div>
+      <div class="confmat-cell confmat-tp"><span class="confmat-n">${m.tp}</span><span class="confmat-pct">${pct(m.tp)}% · TP</span></div>
+      <div class="confmat-cell confmat-fn"><span class="confmat-n">${m.fn}</span><span class="confmat-pct">${pct(m.fn)}% · FN</span></div>
+
+      <div class="confmat-head confmat-head-row">Real: Bajo</div>
+      <div class="confmat-cell confmat-fp"><span class="confmat-n">${m.fp}</span><span class="confmat-pct">${pct(m.fp)}% · FP</span></div>
+      <div class="confmat-cell confmat-tn"><span class="confmat-n">${m.tn}</span><span class="confmat-pct">${pct(m.tn)}% · TN</span></div>
+    </div>
+    <div class="acc-summary confmat-metrics">
+      <div class="acc-card"><span class="acc-card-label">Accuracy</span><span class="acc-card-value acc-green">${(m.accuracy * 100).toFixed(1)}%</span></div>
+      <div class="acc-card"><span class="acc-card-label">Precision</span><span class="acc-card-value">${(m.precision * 100).toFixed(1)}%</span></div>
+      <div class="acc-card"><span class="acc-card-label">Recall</span><span class="acc-card-value">${(m.recall * 100).toFixed(1)}%</span></div>
+      <div class="acc-card"><span class="acc-card-label">F1</span><span class="acc-card-value">${(m.f1 * 100).toFixed(1)}%</span></div>
+    </div>
+    <div class="rend-meta">${total} predicciones de test (conjunto no visto en entrenamiento) · ${confData[target].positivos_pct}% positivos reales · ${modelName}</div>`;
 }
 
 function renderCompChart(varKey, metricsData) {
@@ -1408,6 +1513,7 @@ async function renderRendimientoTab() {
         <div class="rend-sub-tabs">
           <button class="rend-sub-tab active" data-section="backtesting">Backtesting</button>
           <button class="rend-sub-tab" data-section="comp">Comparación de Algoritmos</button>
+          <button class="rend-sub-tab" data-section="confusion">Matriz de Confusión</button>
           <button class="rend-sub-tab" data-section="shap">Importancia de Variables</button>
         </div>
       </div>
@@ -1419,16 +1525,18 @@ async function renderRendimientoTab() {
   const content = document.getElementById('rend-tab-content');
 
   try {
-    const [perfRes, metricsRes, shapRes] = await Promise.all([
+    const [perfRes, metricsRes, shapRes, confRes] = await Promise.all([
       fetch(`${API_URL}/model-performance`),
       fetch(`${API_URL}/model-metrics`),
       fetch(`${API_URL}/shap-values`),
+      fetch(`${API_URL}/confusion-matrix`),
     ]);
 
     if (!perfRes.ok) throw new Error();
     const perfData    = await perfRes.json();
     const metricsData = metricsRes.ok ? await metricsRes.json() : null;
     const shapData    = shapRes.ok    ? await shapRes.json()    : null;
+    const confData    = confRes.ok    ? await confRes.json()    : null;
 
     function accColor(pct) {
       return pct >= 70 ? 'acc-green' : pct >= 50 ? 'acc-yellow' : 'acc-red';
@@ -1515,6 +1623,30 @@ async function renderRendimientoTab() {
         Sin datos de comparación disponibles.</div>`;
     }
 
+    // ── Sección Matriz de Confusión ───────────────────────────────────────
+    let confusionHtml = '';
+    if (confData) {
+      const targetKeys = Object.keys(confData);
+      const firstModelos = confData[targetKeys[0]].modelos.map(m => m.nombre);
+      confusionHtml = `
+        <div class="confusion-var-tabs">
+          ${targetKeys.map((k, i) => `
+            <button class="confusion-var-tab${i === 0 ? ' active' : ''}" data-var="${k}">
+              ${metricsData && metricsData[k] ? metricsData[k].label : k}
+            </button>`).join('')}
+        </div>
+        <div class="confusion-model-tabs">
+          ${firstModelos.map((nombre, i) => `
+            <button class="confusion-model-tab${i === 0 ? ' active' : ''}" data-modelo="${nombre}" style="--mc: ${MODEL_COLORS[nombre] || '#888'}">
+              ${nombre}
+            </button>`).join('')}
+        </div>
+        <div id="confusion-matrix-wrap" class="confusion-matrix-wrap"></div>`;
+    } else {
+      confusionHtml = `<div style="padding:40px;color:var(--text3);font-size:13px;text-align:center">
+        Sin datos de matriz de confusión disponibles.</div>`;
+    }
+
     // ── Sección Importancia de Variables (SHAP) ──────────────────────────
     let shapHtml = '';
     if (shapData) {
@@ -1552,6 +1684,7 @@ async function renderRendimientoTab() {
     content.innerHTML = `
       <div id="rend-section-backtesting" class="rend-section">${backHtml}</div>
       <div id="rend-section-comp"        class="rend-section comp-section" style="display:none">${compHtml}</div>
+      <div id="rend-section-confusion"   class="rend-section comp-section" style="display:none">${confusionHtml}</div>
       <div id="rend-section-shap"        class="rend-section comp-section" style="display:none">${shapHtml}</div>`;
 
     // Sub-tab switching
@@ -1570,6 +1703,11 @@ async function renderRendimientoTab() {
         if (target === 'shap' && shapData && !_shapChart) {
           renderShapChart('xg', shapData);
         }
+        if (target === 'confusion' && confData) {
+          const t = document.querySelector('.confusion-var-tab.active');
+          const m = document.querySelector('.confusion-model-tab.active');
+          renderConfusionMatrix(t ? t.dataset.var : Object.keys(confData)[0], m ? m.dataset.modelo : null, confData);
+        }
       });
     });
 
@@ -1580,6 +1718,26 @@ async function renderRendimientoTab() {
           document.querySelectorAll('.comp-var-tab').forEach(b => b.classList.remove('active'));
           btn.classList.add('active');
           renderCompChart(btn.dataset.var, metricsData);
+        });
+      });
+    }
+
+    // Tabs dentro de Matriz de Confusión
+    if (confData) {
+      document.querySelectorAll('.confusion-var-tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.confusion-var-tab').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          const m = document.querySelector('.confusion-model-tab.active');
+          renderConfusionMatrix(btn.dataset.var, m ? m.dataset.modelo : null, confData);
+        });
+      });
+      document.querySelectorAll('.confusion-model-tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.confusion-model-tab').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          const t = document.querySelector('.confusion-var-tab.active');
+          renderConfusionMatrix(t ? t.dataset.var : Object.keys(confData)[0], btn.dataset.modelo, confData);
         });
       });
     }

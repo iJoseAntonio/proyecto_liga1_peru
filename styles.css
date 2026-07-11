@@ -966,6 +966,57 @@ img { display: block; }
   text-align: right;
 }
 
+/* SHAP local — explicación de una predicción concreta */
+.pred-explain-btn {
+  margin-top: 4px;
+  padding: 3px 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text2);
+  font-size: 10px;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s;
+}
+.pred-explain-btn:hover { border-color: var(--accent); color: var(--text); }
+.pred-explain-icon { font-size: 8px; transition: transform 0.2s; display: inline-block; }
+.pred-explain-btn.open .pred-explain-icon { transform: rotate(180deg); }
+
+.pred-explain-panel {
+  display: none;
+  width: 100%;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--border);
+}
+.pred-explain-panel.open { display: flex; flex-direction: column; gap: 6px; }
+
+.pred-explain-loading { font-size: 10px; color: var(--text3); padding: 4px 0; }
+
+.pred-explain-target { display: flex; flex-direction: column; gap: 3px; }
+.pred-explain-target-label {
+  font-size: 9px;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.pred-explain-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.pred-team.away .pred-explain-chips { justify-content: flex-end; }
+
+.shap-chip {
+  font-size: 9px;
+  font-family: 'DM Mono', monospace;
+  padding: 2px 7px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+.shap-chip-pos { background: rgba(21, 177, 104, 0.15); color: var(--green); }
+.shap-chip-neg { background: rgba(226, 75, 74, 0.12);  color: var(--red);   }
+
 /* ── ESTADÍSTICAS TAB ────────────────────────────────────────────────────── */
 .stats-tab-wrap {
   display: flex;
@@ -1735,4 +1786,70 @@ img { display: block; }
   color: var(--text3);
   line-height: 1.5;
 }
+
+/* ── MATRIZ DE CONFUSIÓN ──────────────────────────────────────────────────── */
+.confusion-var-tabs, .confusion-model-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  background: var(--surface3);
+  border-radius: 20px;
+  padding: 3px;
+  gap: 2px;
+  width: fit-content;
+  margin-top: 16px;
+  margin-bottom: 12px;
+}
+.confusion-var-tab, .confusion-model-tab {
+  padding: 5px 16px;
+  border: none;
+  border-radius: 16px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 500;
+  transition: all 0.2s;
+  background: transparent;
+  color: var(--text2);
+  white-space: nowrap;
+}
+.confusion-var-tab.active, .confusion-model-tab.active { background: var(--surface); color: var(--text); }
+.confusion-model-tab.active { color: var(--mc, var(--text)); }
+
+.confusion-matrix-wrap { padding: 4px 0 8px; }
+
+.confmat-grid {
+  display: grid;
+  grid-template-columns: 110px repeat(2, 1fr);
+  gap: 3px;
+  max-width: 440px;
+  margin: 0 auto 18px;
+}
+.confmat-corner { }
+.confmat-head {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 11px;
+  color: var(--text2);
+  padding: 6px 4px;
+}
+.confmat-head-row { justify-content: flex-end; text-align: right; padding-right: 10px; }
+.confmat-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 16px 8px;
+  border-radius: var(--radius);
+}
+.confmat-n { font-size: 24px; font-weight: 700; font-family: 'DM Mono', monospace; color: #fff; }
+.confmat-pct { font-size: 10px; color: rgba(255,255,255,0.85); font-family: 'DM Mono', monospace; }
+.confmat-tp { background: rgba(21, 177, 104, 0.55); }
+.confmat-tn { background: rgba(56, 189, 248, 0.4); }
+.confmat-fp { background: rgba(226, 75, 74, 0.45); }
+.confmat-fn { background: rgba(240, 165, 0, 0.45); }
+
+.confmat-metrics { grid-template-columns: repeat(4, 1fr); max-width: 500px; margin: 0 auto; padding: 0; }
 

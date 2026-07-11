@@ -13,6 +13,7 @@ from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from sklearn.metrics import silhouette_score
+import shap
 
 limiter = Limiter(key_func=get_remote_address)
 
@@ -202,6 +203,39 @@ def run_model(modelo, stats: dict) -> tuple[float, int]:
     prob  = float(modelo.predict_proba(X)[0][1])
     clase = int(modelo.predict(X)[0])
     return round(prob * 100, 1), clase
+
+
+_explainers: dict = {}
+
+
+def _get_explainer(target: str):
+    modelo = {'xg': modelo_xg, 'tiros': modelo_tiros, 'goles': modelo_goles}.get(target)
+    if modelo is None:
+        return None
+    if target not in _explainers:
+        _explainers[target] = shap.TreeExplainer(modelo)
+    return _explainers[target]
+
+
+def explain_prediction(target: str, stats: dict, top_n: int = 8) -> dict | None:
+    """SHAP local (Panel 2): qué variables empujan esta predicción puntual arriba/abajo."""
+    explainer = _get_explainer(target)
+    if explainer is None:
+        return None
+
+    X = pd.DataFrame([stats])[FEATURES_FINAL]
+    shap_row    = explainer.shap_values(X)[0]
+    base_value  = float(explainer.expected_value)
+
+    contribs = sorted(zip(FEATURES_FINAL, shap_row), key=lambda t: abs(t[1]), reverse=True)[:top_n]
+
+    return {
+        'base_value': round(base_value, 4),
+        'variables': [
+            {'variable': name, 'shap': round(float(val), 5)}
+            for name, val in contribs
+        ],
+    }
 
 
 def _load_date_round_map() -> dict:
@@ -565,6 +599,7 @@ def predict_match(
     home: str = Query(..., description="Nombre del equipo local"),
     away: str = Query(..., description="Nombre del equipo visitante"),
     fecha: str | None = Query(None, description="Fecha del partido DD/MM/YYYY"),
+    explain: bool = Query(False, description="Incluir explicación SHAP local por variable"),
 ):
     if any(m is None for m in [modelo_xg, modelo_tiros, modelo_goles]):
         raise HTTPException(status_code=503, detail="Modelos no disponibles")
@@ -589,11 +624,17 @@ def predict_match(
         xg_p,  xg_c  = run_model(modelo_xg,   stats)
         tir_p, tir_c = run_model(modelo_tiros, stats)
         gol_p, gol_c = run_model(modelo_goles, stats)
-        return {
+        result = {
             "xg":    {"probabilidad": xg_p,  "alto": xg_c  == 1},
             "tiros": {"probabilidad": tir_p, "alto": tir_c == 1},
             "goles": {"probabilidad": gol_p, "alto": gol_c == 1},
         }
+        if explain:
+            for target in ("xg", "tiros", "goles"):
+                local_exp = explain_prediction(target, stats)
+                if local_exp:
+                    result[target]["shap_local"] = local_exp
+        return result
 
     return {
         "local":     {"equipo": home, **predict_all(home_stats)},
@@ -736,6 +777,19 @@ def shap_values_endpoint(request: Request):
             return json.load(f)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error leyendo SHAP values: {e}")
+
+
+@app.get("/confusion-matrix")
+@limiter.limit("60/minute")
+def confusion_matrix_endpoint(request: Request):
+    path = "matriz_confusion.json"
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="matriz_confusion.json no encontrado")
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error leyendo matriz de confusión: {e}")
 
 
 @app.get("/model-performance")

@@ -1,0 +1,167 @@
+{
+  "xg": {
+    "label": "xg",
+    "n_test": 442,
+    "positivos_pct": 36.0,
+    "modelos": [
+      {
+        "nombre": "XGBoost",
+        "tp": 86,
+        "tn": 208,
+        "fp": 75,
+        "fn": 73,
+        "accuracy": 0.6652,
+        "precision": 0.5342,
+        "recall": 0.5409,
+        "f1": 0.5375,
+        "auc_roc": 0.6572
+      },
+      {
+        "nombre": "Random Forest",
+        "tp": 97,
+        "tn": 180,
+        "fp": 103,
+        "fn": 62,
+        "accuracy": 0.6267,
+        "precision": 0.485,
+        "recall": 0.6101,
+        "f1": 0.5404,
+        "auc_roc": 0.6386
+      },
+      {
+        "nombre": "LightGBM",
+        "tp": 93,
+        "tn": 197,
+        "fp": 86,
+        "fn": 66,
+        "accuracy": 0.6561,
+        "precision": 0.5196,
+        "recall": 0.5849,
+        "f1": 0.5503,
+        "auc_roc": 0.6666
+      },
+      {
+        "nombre": "Logistic Regression",
+        "tp": 96,
+        "tn": 181,
+        "fp": 102,
+        "fn": 63,
+        "accuracy": 0.6267,
+        "precision": 0.4848,
+        "recall": 0.6038,
+        "f1": 0.5378,
+        "auc_roc": 0.6511
+      }
+    ]
+  },
+  "tiros": {
+    "label": "tiros",
+    "n_test": 442,
+    "positivos_pct": 42.5,
+    "modelos": [
+      {
+        "nombre": "XGBoost",
+        "tp": 93,
+        "tn": 190,
+        "fp": 64,
+        "fn": 95,
+        "accuracy": 0.6403,
+        "precision": 0.5924,
+        "recall": 0.4947,
+        "f1": 0.5391,
+        "auc_roc": 0.6341
+      },
+      {
+        "nombre": "Random Forest",
+        "tp": 100,
+        "tn": 169,
+        "fp": 85,
+        "fn": 88,
+        "accuracy": 0.6086,
+        "precision": 0.5405,
+        "recall": 0.5319,
+        "f1": 0.5362,
+        "auc_roc": 0.6256
+      },
+      {
+        "nombre": "LightGBM",
+        "tp": 102,
+        "tn": 179,
+        "fp": 75,
+        "fn": 86,
+        "accuracy": 0.6357,
+        "precision": 0.5763,
+        "recall": 0.5426,
+        "f1": 0.5589,
+        "auc_roc": 0.6282
+      },
+      {
+        "nombre": "Logistic Regression",
+        "tp": 103,
+        "tn": 167,
+        "fp": 87,
+        "fn": 85,
+        "accuracy": 0.6109,
+        "precision": 0.5421,
+        "recall": 0.5479,
+        "f1": 0.545,
+        "auc_roc": 0.6528
+      }
+    ]
+  },
+  "goles": {
+    "label": "goles",
+    "n_test": 442,
+    "positivos_pct": 38.2,
+    "modelos": [
+      {
+        "nombre": "XGBoost",
+        "tp": 53,
+        "tn": 220,
+        "fp": 53,
+        "fn": 116,
+        "accuracy": 0.6176,
+        "precision": 0.5,
+        "recall": 0.3136,
+        "f1": 0.3855,
+        "auc_roc": 0.5586
+      },
+      {
+        "nombre": "Random Forest",
+        "tp": 93,
+        "tn": 155,
+        "fp": 118,
+        "fn": 76,
+        "accuracy": 0.5611,
+        "precision": 0.4408,
+        "recall": 0.5503,
+        "f1": 0.4895,
+        "auc_roc": 0.5588
+      },
+      {
+        "nombre": "LightGBM",
+        "tp": 51,
+        "tn": 219,
+        "fp": 54,
+        "fn": 118,
+        "accuracy": 0.6109,
+        "precision": 0.4857,
+        "recall": 0.3018,
+        "f1": 0.3723,
+        "auc_roc": 0.5508
+      },
+      {
+        "nombre": "Logistic Regression",
+        "tp": 93,
+        "tn": 180,
+        "fp": 93,
+        "fn": 76,
+        "accuracy": 0.6176,
+        "precision": 0.5,
+        "recall": 0.5503,
+        "f1": 0.5239,
+        "auc_roc": 0.6358
+      }
+    ]
+  }
+}
