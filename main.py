@@ -756,7 +756,7 @@ def team_rankings(request: Request):
 @app.get("/model-metrics")
 @limiter.limit("60/minute")
 def model_metrics(request: Request):
-    path = "metricas_modelos.json"
+    path = "modelos/metricas_modelos.json"
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail="metricas_modelos.json no encontrado")
     try:
@@ -769,7 +769,7 @@ def model_metrics(request: Request):
 @app.get("/shap-values")
 @limiter.limit("60/minute")
 def shap_values_endpoint(request: Request):
-    path = "shap_values.json"
+    path = "modelos/shap_values.json"
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail="shap_values.json no encontrado")
     try:
@@ -782,7 +782,7 @@ def shap_values_endpoint(request: Request):
 @app.get("/confusion-matrix")
 @limiter.limit("60/minute")
 def confusion_matrix_endpoint(request: Request):
-    path = "matriz_confusion.json"
+    path = "modelos/matriz_confusion.json"
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail="matriz_confusion.json no encontrado")
     try:
