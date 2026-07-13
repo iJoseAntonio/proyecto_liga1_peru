@@ -10,6 +10,12 @@ const CSV_PATH         = 'data/tabla_liga1_peru.csv';
 const MATCHES_CSV_PATH = 'data/partidos_liga1_2026.csv';
 const API_URL          = 'https://proyecto-liga1-peru.onrender.com';
 
+// Panel 4 — CRUD de consultas (Supabase REST). La key "publishable"/"anon"
+// esta disenada para exponerse en el cliente; el acceso real lo controla
+// la politica RLS de la tabla en Supabase, no el secreto de esta key.
+const SUPABASE_URL = 'https://eeazjvcpzejoetfmkoeo.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_2nNB3hP2boUNsSS7lJb4zA_aaok9Zxb';
+
 // Map de nombres de equipos del CSV → ID de Sofascore para los escudos
 const TEAM_IDS = {
   'Alianza Lima':       2311,
@@ -58,6 +64,7 @@ let _statsLoaded  = false;
 let _rendLoaded   = false;
 let _edaLoaded    = false;
 let _forecastLoaded = false;
+let _consultasLoaded = false;
 
 // ── DOM REFS ─────────────────────────────────────────────────────────────
 const $standingsTable = () => document.getElementById('standings-table');
@@ -518,6 +525,7 @@ function setupMainTabs() {
       if (name === 'rendimiento'  && !_rendLoaded)  { renderRendimientoTab();  _rendLoaded  = true; }
       if (name === 'eda'          && !_edaLoaded)   { renderEdaTab();          _edaLoaded   = true; }
       if (name === 'pronostico'   && !_forecastLoaded) { renderForecastTab(); _forecastLoaded = true; }
+      if (name === 'consultas'    && !_consultasLoaded) { renderConsultasTab(); _consultasLoaded = true; }
     });
   });
 }
@@ -1651,6 +1659,210 @@ async function renderForecastTab() {
   } catch (_) {
     content.innerHTML = '<div class="empty-tab">No se pudo cargar el pronóstico</div>';
   }
+}
+
+// ── CONSULTAS TAB (Panel 4 — CRUD sobre Supabase) ──────────────────────────
+async function supabaseFetch(path, options = {}) {
+  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    ...options,
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json',
+      ...(options.headers || {}),
+    },
+  });
+}
+
+let _consultaPreviewData = null;
+
+function renderConsultaPreview(home, away, data) {
+  const el = document.getElementById('consulta-preview');
+  if (!el) return;
+  el.innerHTML = `
+    <div class="consulta-preview-box">
+      <div class="consulta-preview-row"><span>${home}</span><span>xG ${data.local.xg.probabilidad}% · Tiros ${data.local.tiros.probabilidad}% · Goles ${data.local.goles.probabilidad}%</span></div>
+      <div class="consulta-preview-row"><span>${away}</span><span>xG ${data.visitante.xg.probabilidad}% · Tiros ${data.visitante.tiros.probabilidad}% · Goles ${data.visitante.goles.probabilidad}%</span></div>
+      <input id="consulta-nota" type="text" class="consulta-nota-input" placeholder="Nota (opcional)">
+      <button id="consulta-save-btn" class="pred-explain-btn">💾 Guardar esta consulta</button>
+    </div>`;
+  document.getElementById('consulta-save-btn').addEventListener('click', onConsultaSave);
+}
+
+async function onConsultaCalc() {
+  const home = document.getElementById('consulta-home').value;
+  const away = document.getElementById('consulta-away').value;
+  const preview = document.getElementById('consulta-preview');
+  if (!home || !away || home === away) {
+    preview.innerHTML = '<div class="empty-tab">Elige dos equipos distintos</div>';
+    return;
+  }
+  preview.innerHTML = '<div class="pred-explain-loading">Calculando predicción…</div>';
+  try {
+    const res = await fetch(`${API_URL}/predict-match?home=${encodeURIComponent(home)}&away=${encodeURIComponent(away)}`);
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    _consultaPreviewData = { home, away, data };
+    renderConsultaPreview(home, away, data);
+  } catch (_) {
+    preview.innerHTML = '<div class="empty-tab">No se pudo calcular la predicción para estos equipos</div>';
+  }
+}
+
+async function onConsultaSave() {
+  if (!_consultaPreviewData) return;
+  const { home, away, data } = _consultaPreviewData;
+  const notaInput = document.getElementById('consulta-nota');
+  const btn = document.getElementById('consulta-save-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Guardando…'; }
+
+  const payload = {
+    equipo_local:     home,
+    equipo_visitante: away,
+    prob_xg:          data.local.xg.probabilidad,
+    prob_tiros:       data.local.tiros.probabilidad,
+    prob_goles:       data.local.goles.probabilidad,
+    alto_xg:          data.local.xg.alto,
+    alto_tiros:       data.local.tiros.alto,
+    alto_goles:       data.local.goles.alto,
+    nota:             (notaInput && notaInput.value.trim()) || null,
+  };
+
+  try {
+    const res = await supabaseFetch('consultas', { method: 'POST', body: JSON.stringify(payload) });
+    if (!res.ok) throw new Error();
+    document.getElementById('consulta-preview').innerHTML = '<div class="rend-meta">Consulta guardada ✓</div>';
+    _consultaPreviewData = null;
+    loadConsultasList();
+  } catch (_) {
+    if (btn) { btn.disabled = false; btn.textContent = '💾 Guardar esta consulta'; }
+    alert('No se pudo guardar la consulta. Intenta de nuevo.');
+  }
+}
+
+function fmtTimestamp(iso) {
+  const d = new Date(iso);
+  return d.toLocaleString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function renderConsultasList(rows) {
+  const wrap = document.getElementById('consultas-list-wrap');
+  if (!wrap) return;
+  if (!rows.length) {
+    wrap.innerHTML = '<div class="empty-tab">Aún no hay consultas guardadas</div>';
+    return;
+  }
+
+  const badge = (val, alto) => `<span class="acc-badge ${alto ? 'acc-green' : 'acc-red'}">${val ?? '—'}%</span>`;
+
+  wrap.innerHTML = `
+    <div class="consulta-row consulta-head">
+      <span>Fecha</span><span>Partido</span><span>xG</span><span>Tiros</span><span>Goles</span><span>Nota</span><span></span>
+    </div>
+    ${rows.map(r => `
+      <div class="consulta-row" data-id="${r.id}" style="animation-delay:${Math.min(rows.indexOf(r), 10) * 0.04}s">
+        <span class="consulta-fecha">${fmtTimestamp(r.created_at)}</span>
+        <span class="consulta-partido">${r.equipo_local} vs ${r.equipo_visitante}</span>
+        <span>${badge(r.prob_xg, r.alto_xg)}</span>
+        <span>${badge(r.prob_tiros, r.alto_tiros)}</span>
+        <span>${badge(r.prob_goles, r.alto_goles)}</span>
+        <span class="consulta-nota-cell" data-nota="${(r.nota || '').replace(/"/g, '&quot;')}">${r.nota || '—'}</span>
+        <span class="consulta-actions">
+          <button class="consulta-edit-btn" title="Editar nota">✎</button>
+          <button class="consulta-del-btn" title="Eliminar">🗑</button>
+        </span>
+      </div>`).join('')}`;
+
+  wrap.querySelectorAll('.consulta-edit-btn').forEach(btn => btn.addEventListener('click', () => onConsultaEdit(btn)));
+  wrap.querySelectorAll('.consulta-del-btn').forEach(btn => btn.addEventListener('click', () => onConsultaDelete(btn)));
+}
+
+function onConsultaEdit(btn) {
+  const row = btn.closest('.consulta-row');
+  const cell = row.querySelector('.consulta-nota-cell');
+  const current = cell.dataset.nota || '';
+  cell.innerHTML = `<input type="text" class="consulta-nota-input consulta-nota-input-inline" value="${current.replace(/"/g, '&quot;')}">
+    <button class="consulta-save-nota-btn">✓</button>`;
+  const input = cell.querySelector('input');
+  input.focus();
+
+  cell.querySelector('.consulta-save-nota-btn').addEventListener('click', async () => {
+    const id = row.dataset.id;
+    const nuevaNota = input.value.trim() || null;
+    try {
+      const res = await supabaseFetch(`consultas?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify({ nota: nuevaNota }) });
+      if (!res.ok) throw new Error();
+      loadConsultasList();
+    } catch (_) {
+      alert('No se pudo actualizar la nota.');
+    }
+  });
+}
+
+async function onConsultaDelete(btn) {
+  const row = btn.closest('.consulta-row');
+  const id = row.dataset.id;
+  if (!confirm('¿Eliminar esta consulta guardada?')) return;
+  try {
+    const res = await supabaseFetch(`consultas?id=eq.${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error();
+    loadConsultasList();
+  } catch (_) {
+    alert('No se pudo eliminar la consulta.');
+  }
+}
+
+async function loadConsultasList() {
+  const wrap = document.getElementById('consultas-list-wrap');
+  if (!wrap) return;
+  wrap.innerHTML = '<div class="loading-state"><div class="spinner"></div><span>Cargando consultas…</span></div>';
+  try {
+    const res = await supabaseFetch('consultas?select=*&order=created_at.desc');
+    if (!res.ok) throw new Error();
+    renderConsultasList(await res.json());
+  } catch (_) {
+    wrap.innerHTML = '<div class="empty-tab">No se pudo cargar la lista de consultas</div>';
+  }
+}
+
+async function renderConsultasTab() {
+  const tabEl = document.getElementById('tab-consultas');
+  if (!tabEl) return;
+
+  tabEl.innerHTML = `
+    <div class="rend-tab-wrap">
+      <div style="flex:1; overflow-y:auto">
+        <div class="eda-card" style="margin:16px 16px 12px">
+          <p class="shap-chart-title">Nueva consulta</p>
+          <div class="consulta-form-row">
+            <select id="consulta-home" class="consulta-select"><option value="">Cargando equipos…</option></select>
+            <span class="consulta-vs">vs</span>
+            <select id="consulta-away" class="consulta-select"><option value="">Cargando equipos…</option></select>
+            <button id="consulta-calc-btn" class="pred-explain-btn">Calcular predicción</button>
+          </div>
+          <div id="consulta-preview"></div>
+        </div>
+
+        <div class="eda-card" style="margin:0 16px 16px">
+          <p class="shap-chart-title">Consultas guardadas</p>
+          <div id="consultas-list-wrap">
+            <div class="loading-state"><div class="spinner"></div><span>Cargando…</span></div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  try {
+    const res = await fetch(`${API_URL}/team-rankings`);
+    const teams = res.ok ? (await res.json()).map(t => t.equipo).sort() : [];
+    const opts = `<option value="">Selecciona equipo</option>` + teams.map(t => `<option value="${t}">${t}</option>`).join('');
+    document.getElementById('consulta-home').innerHTML = opts;
+    document.getElementById('consulta-away').innerHTML = opts;
+  } catch (_) { /* deja "Cargando equipos…" visible */ }
+
+  document.getElementById('consulta-calc-btn').addEventListener('click', onConsultaCalc);
+
+  loadConsultasList();
 }
 
 // ── RENDIMIENTO TAB ────────────────────────────────────────────────────────

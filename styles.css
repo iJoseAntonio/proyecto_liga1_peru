@@ -1853,3 +1853,95 @@ img { display: block; }
 
 .confmat-metrics { grid-template-columns: repeat(4, 1fr); max-width: 500px; margin: 0 auto; padding: 0; }
 
+/* ── CONSULTAS (CRUD) ─────────────────────────────────────────────────────── */
+.consulta-form-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.consulta-select {
+  flex: 1;
+  min-width: 160px;
+  padding: 7px 10px;
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 12px;
+  font-family: 'DM Sans', sans-serif;
+}
+.consulta-vs { font-size: 11px; color: var(--text2); font-weight: 600; }
+
+.consulta-preview-box {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.consulta-preview-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: var(--text);
+  gap: 10px;
+}
+.consulta-preview-row span:first-child { font-weight: 600; }
+.consulta-preview-row span:last-child { color: var(--text2); font-family: 'DM Mono', monospace; font-size: 11px; }
+
+.consulta-nota-input {
+  padding: 7px 10px;
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 12px;
+  font-family: 'DM Sans', sans-serif;
+  width: 100%;
+}
+.consulta-nota-input-inline { width: auto; flex: 1; padding: 3px 8px; font-size: 11px; }
+
+.consulta-row {
+  display: grid;
+  grid-template-columns: 120px 1fr 60px 60px 60px 1fr 56px;
+  gap: 8px;
+  padding: 9px 10px;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--text);
+  animation: fadeIn 0.25s ease both;
+  transition: background 0.15s;
+}
+.consulta-row:hover { background: var(--surface3); }
+.consulta-row:last-child { border-bottom: none; }
+.consulta-head {
+  font-size: 10px;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  z-index: 5;
+}
+.consulta-fecha { color: var(--text2); font-family: 'DM Mono', monospace; font-size: 10px; }
+.consulta-partido { font-weight: 600; }
+.consulta-nota-cell { color: var(--text2); display: flex; align-items: center; gap: 4px; }
+.consulta-actions { display: flex; gap: 4px; justify-content: flex-end; }
+.consulta-edit-btn, .consulta-del-btn, .consulta-save-nota-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text2);
+  font-size: 11px;
+  padding: 3px 7px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.consulta-edit-btn:hover, .consulta-save-nota-btn:hover { border-color: var(--accent); color: var(--text); }
+.consulta-del-btn:hover { border-color: var(--red); color: var(--red); }
+
