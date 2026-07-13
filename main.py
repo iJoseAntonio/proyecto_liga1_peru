@@ -239,7 +239,7 @@ def explain_prediction(target: str, stats: dict, top_n: int = 8) -> dict | None:
 
 
 def _load_date_round_map() -> dict:
-    path = "partidos_liga1_2026.csv"
+    path = "data/partidos_liga1_2026.csv"
     if not os.path.exists(path):
         return {}
     try:
@@ -429,7 +429,7 @@ def _precompute_eda():
 
 
 def _valid_current_teams() -> set:
-    path = "partidos_liga1_2026.csv"
+    path = "data/partidos_liga1_2026.csv"
     if not os.path.exists(path):
         return set()
     try:
