@@ -35,10 +35,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-MODEL_XG_PATH    = "Hiperparametros_Finales/Goles_Esperadas/modelo_xgboost_xg.pkl"
-MODEL_TIROS_PATH = "Hiperparametros_Finales/Tiros_Puerta/modelo_xgboost_tiros.pkl"
-MODEL_GOLES_PATH = "Hiperparametros_Finales/Goles/modelo_xgboost_liga1_goles.pkl"
-DATA_PATH        = "data/bd_liga1.csv"
+MODEL_XG_PATH    = "../models/final/goles_esperadas/modelo_xgboost_xg.pkl"
+MODEL_TIROS_PATH = "../models/final/tiros_puerta/modelo_xgboost_tiros.pkl"
+MODEL_GOLES_PATH = "../models/final/goles/modelo_xgboost_liga1_goles.pkl"
+DATA_PATH        = "../data/bd_liga1.csv"
 
 modelo_xg      = None
 modelo_tiros   = None
@@ -250,7 +250,7 @@ def explain_prediction(target: str, stats: dict, top_n: int = 8) -> dict | None:
 
 
 def _load_date_round_map() -> dict:
-    path = "data/partidos_liga1_2026.csv"
+    path = "../data/partidos_liga1_2026.csv"
     if not os.path.exists(path):
         return {}
     try:
@@ -440,7 +440,7 @@ def _precompute_eda():
 
 
 def _valid_current_teams() -> set:
-    path = "data/partidos_liga1_2026.csv"
+    path = "../data/partidos_liga1_2026.csv"
     if not os.path.exists(path):
         return set()
     try:
@@ -876,7 +876,7 @@ def team_rankings(request: Request):
 @app.get("/model-metrics")
 @limiter.limit("60/minute")
 def model_metrics(request: Request):
-    path = "modelos/metricas_modelos.json"
+    path = "../models/metrics/metricas_modelos.json"
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail="metricas_modelos.json no encontrado")
     try:
@@ -889,7 +889,7 @@ def model_metrics(request: Request):
 @app.get("/shap-values")
 @limiter.limit("60/minute")
 def shap_values_endpoint(request: Request):
-    path = "modelos/shap_values.json"
+    path = "../models/metrics/shap_values.json"
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail="shap_values.json no encontrado")
     try:
@@ -902,7 +902,7 @@ def shap_values_endpoint(request: Request):
 @app.get("/confusion-matrix")
 @limiter.limit("60/minute")
 def confusion_matrix_endpoint(request: Request):
-    path = "modelos/matriz_confusion.json"
+    path = "../models/metrics/matriz_confusion.json"
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail="matriz_confusion.json no encontrado")
     try:
