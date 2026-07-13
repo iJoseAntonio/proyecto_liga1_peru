@@ -1835,9 +1835,9 @@ async function renderConsultasTab() {
         <div class="eda-card" style="margin:16px 16px 12px">
           <p class="shap-chart-title">Nueva consulta</p>
           <div class="consulta-form-row">
-            <select id="consulta-home" class="consulta-select"><option value="">Cargando equipos…</option></select>
+            <select id="consulta-home" class="consulta-select"><option value="">Cargando equipos… (puede tardar ~30s la primera vez)</option></select>
             <span class="consulta-vs">vs</span>
-            <select id="consulta-away" class="consulta-select"><option value="">Cargando equipos…</option></select>
+            <select id="consulta-away" class="consulta-select"><option value="">Cargando equipos… (puede tardar ~30s la primera vez)</option></select>
             <button id="consulta-calc-btn" class="pred-explain-btn">Calcular predicción</button>
           </div>
           <div id="consulta-preview"></div>
@@ -1852,17 +1852,29 @@ async function renderConsultasTab() {
       </div>
     </div>`;
 
-  try {
-    const res = await fetch(`${API_URL}/team-rankings`);
-    const teams = res.ok ? (await res.json()).map(t => t.equipo).sort() : [];
-    const opts = `<option value="">Selecciona equipo</option>` + teams.map(t => `<option value="${t}">${t}</option>`).join('');
-    document.getElementById('consulta-home').innerHTML = opts;
-    document.getElementById('consulta-away').innerHTML = opts;
-  } catch (_) { /* deja "Cargando equipos…" visible */ }
-
   document.getElementById('consulta-calc-btn').addEventListener('click', onConsultaCalc);
 
+  // Independientes entre sí: Supabase no debe esperar a que el backend
+  // de Render (plan free, con cold-start) responda para mostrar la lista.
+  loadTeamOptions();
   loadConsultasList();
+}
+
+async function loadTeamOptions() {
+  const homeEl = document.getElementById('consulta-home');
+  const awayEl = document.getElementById('consulta-away');
+  try {
+    const res = await fetch(`${API_URL}/team-rankings`);
+    if (!res.ok) throw new Error();
+    const teams = (await res.json()).map(t => t.equipo).sort();
+    const opts = `<option value="">Selecciona equipo</option>` + teams.map(t => `<option value="${t}">${t}</option>`).join('');
+    if (homeEl) homeEl.innerHTML = opts;
+    if (awayEl) awayEl.innerHTML = opts;
+  } catch (_) {
+    const errOpt = `<option value="">Error cargando equipos — reintenta</option>`;
+    if (homeEl) homeEl.innerHTML = errOpt;
+    if (awayEl) awayEl.innerHTML = errOpt;
+  }
 }
 
 // ── RENDIMIENTO TAB ────────────────────────────────────────────────────────
