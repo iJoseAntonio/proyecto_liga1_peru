@@ -12,7 +12,9 @@ import json
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
-from sklearn.metrics import silhouette_score
+from sklearn.metrics import silhouette_score, mean_absolute_percentage_error, mean_squared_error
+from statsmodels.tsa.holtwinters import ExponentialSmoothing
+from statsmodels.tsa.arima.model import ARIMA
 import shap
 
 limiter = Limiter(key_func=get_remote_address)
@@ -45,6 +47,7 @@ df_historico   = None
 _perf_by_round = []
 _eda_data        = {}
 _clustering_data = {}
+_forecast_data   = {}
 
 # Columnas raw a extraer del CSV
 COLS_STATS_CSV = [
@@ -87,6 +90,13 @@ CLUSTER_COLS = [
     'Tarjetas amarillas', 'Entradas', 'Intercepciones', 'Despejes',
 ]
 
+# Panel 3 — Pronóstico: series mensuales combinadas (local + visitante) por partido
+FORECAST_SERIES = {
+    'goles': {'label': 'Goles por Partido',              'col_local': 'goles_local',                     'col_visitante': 'goles_visitante'},
+    'xg':    {'label': 'Goles Esperados (xG) por Partido','col_local': 'Goles esperados (xG)_local',      'col_visitante': 'Goles esperados (xG)_visitante'},
+    'tiros': {'label': 'Tiros a Puerta por Partido',      'col_local': 'Tiros a puerta_local',            'col_visitante': 'Tiros a puerta_visitante'},
+}
+
 
 @app.on_event("startup")
 def cargar_recursos():
@@ -125,6 +135,7 @@ def cargar_recursos():
     _precompute_performance()
     _precompute_eda()
     _precompute_clustering()
+    _precompute_forecast()
 
 
 def _build_team_df(team_name: str, df_fuente: pd.DataFrame) -> pd.DataFrame | None:
@@ -561,6 +572,115 @@ def _precompute_clustering():
     print(f"Clustering precomputado: {n} equipos, k óptimo={best_k} (silueta={best_sil:.3f}).")
 
 
+def _build_monthly_series(col_local: str, col_visitante: str) -> pd.Series | None:
+    if df_historico is None or df_historico.empty:
+        return None
+    total = (
+        pd.to_numeric(df_historico[col_local], errors='coerce') +
+        pd.to_numeric(df_historico[col_visitante], errors='coerce')
+    )
+    df_tmp = pd.DataFrame({'fecha': df_historico['fecha'], 'valor': total}).dropna()
+    df_tmp['mes'] = df_tmp['fecha'].dt.to_period('M')
+    return df_tmp.groupby('mes')['valor'].mean().sort_index()
+
+
+def _fit_forecast_models(y_train: np.ndarray, n_test: int) -> dict:
+    """Suavizado exponencial (Holt) + ARIMA (orden elegido por AIC en train)."""
+    resultados = {
+        'exponencial': {
+            'nombre': 'Suavizado Exponencial (Holt)',
+            'pred_test': np.asarray(ExponentialSmoothing(y_train, trend='add').fit().forecast(n_test)),
+        },
+    }
+
+    best_aic, best_order = np.inf, (0, 0, 0)
+    for p in range(3):
+        for d in range(2):
+            for q in range(3):
+                try:
+                    fit = ARIMA(y_train, order=(p, d, q)).fit()
+                    if fit.aic < best_aic:
+                        best_aic, best_order = fit.aic, (p, d, q)
+                except Exception:
+                    continue
+
+    resultados['arima'] = {
+        'nombre': f'ARIMA{best_order}',
+        'orden': list(best_order),
+        'pred_test': np.asarray(ARIMA(y_train, order=best_order).fit().forecast(n_test)),
+    }
+    return resultados
+
+
+def _precompute_forecast():
+    """Panel 3 — Pronóstico: suavizado exponencial + ARIMA, MAPE/RMSE y ≥4 períodos futuros."""
+    global _forecast_data
+    if df_historico is None or df_historico.empty:
+        return
+
+    N_TEST, N_FORECAST = 5, 4
+    resultado = {}
+
+    for key, cfg in FORECAST_SERIES.items():
+        serie = _build_monthly_series(cfg['col_local'], cfg['col_visitante'])
+        if serie is None or len(serie) < N_TEST + 10:
+            continue
+
+        y = serie.values
+        y_train, y_test = y[:-N_TEST], y[-N_TEST:]
+
+        try:
+            fits = _fit_forecast_models(y_train, N_TEST)
+        except Exception as e:
+            print(f"Pronóstico {key}: error ajustando modelos: {e}")
+            continue
+
+        modelos_out = {}
+        for model_key, info in fits.items():
+            pred_test = info['pred_test']
+            mape = float(mean_absolute_percentage_error(y_test, pred_test) * 100)
+            rmse = float(np.sqrt(mean_squared_error(y_test, pred_test)))
+
+            # Reentrena con toda la serie disponible para el pronóstico real hacia adelante
+            if model_key == 'exponencial':
+                forecast_vals = np.asarray(ExponentialSmoothing(y, trend='add').fit().forecast(N_FORECAST))
+            else:
+                forecast_vals = np.asarray(ARIMA(y, order=tuple(info['orden'])).fit().forecast(N_FORECAST))
+
+            band = 1.96 * rmse
+            future_periods = pd.period_range(serie.index[-1] + 1, periods=N_FORECAST, freq='M')
+
+            modelos_out[model_key] = {
+                'nombre': info['nombre'],
+                'mape':   round(mape, 2),
+                'rmse':   round(rmse, 3),
+                'forecast': [
+                    {
+                        'periodo': str(p),
+                        'valor':   round(float(v), 2),
+                        'lo':      round(float(v - band), 2),
+                        'hi':      round(float(v + band), 2),
+                    }
+                    for p, v in zip(future_periods, forecast_vals)
+                ],
+            }
+
+        mejor = min(modelos_out, key=lambda k: modelos_out[k]['mape'])
+
+        resultado[key] = {
+            'label': cfg['label'],
+            'serie_historica': [
+                {'periodo': str(p), 'valor': round(float(v), 2)} for p, v in serie.items()
+            ],
+            'n_test':      N_TEST,
+            'modelos':     modelos_out,
+            'mejor_modelo': mejor,
+        }
+
+    _forecast_data = resultado
+    print(f"Pronóstico precomputado: {len(resultado)} series.")
+
+
 @app.get("/")
 @limiter.limit("60/minute")
 def root(request: Request):
@@ -790,6 +910,14 @@ def confusion_matrix_endpoint(request: Request):
             return json.load(f)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error leyendo matriz de confusión: {e}")
+
+
+@app.get("/forecast")
+@limiter.limit("60/minute")
+def forecast_endpoint(request: Request):
+    if not _forecast_data:
+        raise HTTPException(status_code=503, detail="Pronóstico no disponible")
+    return _forecast_data
 
 
 @app.get("/model-performance")

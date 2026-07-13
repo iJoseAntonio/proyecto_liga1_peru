@@ -57,6 +57,7 @@ const predCache   = {};
 let _statsLoaded  = false;
 let _rendLoaded   = false;
 let _edaLoaded    = false;
+let _forecastLoaded = false;
 
 // ── DOM REFS ─────────────────────────────────────────────────────────────
 const $standingsTable = () => document.getElementById('standings-table');
@@ -516,6 +517,7 @@ function setupMainTabs() {
       if (name === 'estadisticas' && !_statsLoaded) { renderEstadisticasTab(); _statsLoaded = true; }
       if (name === 'rendimiento'  && !_rendLoaded)  { renderRendimientoTab();  _rendLoaded  = true; }
       if (name === 'eda'          && !_edaLoaded)   { renderEdaTab();          _edaLoaded   = true; }
+      if (name === 'pronostico'   && !_forecastLoaded) { renderForecastTab(); _forecastLoaded = true; }
     });
   });
 }
@@ -1498,6 +1500,156 @@ async function renderEdaTab() {
     });
   } catch (_) {
     content.innerHTML = '<div class="empty-tab">No se pudo cargar el EDA</div>';
+  }
+}
+
+// ── PRONÓSTICO TAB ───────────────────────────────────────────────────────
+let _forecastChart = null;
+let _forecastData  = null;
+
+const FORECAST_MODEL_COLORS = { exponencial: '#6c63ff', arima: '#15b168' };
+
+function renderForecastChart(data) {
+  if (_forecastChart) { _forecastChart.destroy(); _forecastChart = null; }
+  const canvas = document.getElementById('forecast-chart');
+  if (!canvas) return;
+
+  const histLabels = data.serie_historica.map(p => p.periodo);
+  const histValues = data.serie_historica.map(p => p.valor);
+  const modelKeys  = Object.keys(data.modelos);
+  const forecastLabels = data.modelos[modelKeys[0]].forecast.map(f => f.periodo);
+  const allLabels  = [...histLabels, ...forecastLabels];
+  const bridge     = histValues[histValues.length - 1];
+
+  const datasets = [{
+    label: 'Histórico',
+    data: [...histValues, ...Array(forecastLabels.length).fill(null)],
+    borderColor: '#f0f0f0',
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    pointRadius: 2,
+    tension: 0.2,
+  }];
+
+  modelKeys.forEach(mk => {
+    const m = data.modelos[mk];
+    const isBest = mk === data.mejor_modelo;
+    const col = FORECAST_MODEL_COLORS[mk] || '#888';
+    datasets.push({
+      label: `${m.nombre} (MAPE ${m.mape}%)`,
+      data: [...Array(histValues.length - 1).fill(null), bridge, ...m.forecast.map(f => f.valor)],
+      borderColor: col,
+      backgroundColor: hexToRgba(col, 0.1),
+      borderWidth: isBest ? 2.5 : 1.5,
+      borderDash: [5, 4],
+      pointRadius: 3,
+      tension: 0.2,
+      fill: isBest,
+    });
+  });
+
+  _forecastChart = new Chart(canvas, {
+    type: 'line',
+    data: { labels: allLabels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'bottom', labels: { color: '#f0f0f0', font: { size: 10 }, boxWidth: 14 } },
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { color: '#aaa', font: { size: 9 }, maxRotation: 60, minRotation: 60 },
+          border: { color: 'rgba(255,255,255,0.3)' },
+        },
+        y: {
+          grid: { color: 'rgba(255,255,255,0.1)' },
+          ticks: { color: '#f0f0f0', font: { size: 10 } },
+          border: { color: 'rgba(255,255,255,0.3)' },
+        },
+      },
+    },
+  });
+}
+
+function renderForecastVariable(varKey) {
+  const data = _forecastData[varKey];
+  if (!data) return;
+
+  const metricsEl = document.getElementById('forecast-metrics');
+  if (metricsEl) {
+    metricsEl.innerHTML = Object.entries(data.modelos).map(([mk, m]) => `
+      <div class="acc-card">
+        <span class="acc-card-label">${m.nombre}${mk === data.mejor_modelo ? ' ★ mejor' : ''}</span>
+        <span class="acc-card-value ${mk === data.mejor_modelo ? 'acc-green' : ''}">${m.mape}%</span>
+        <span class="acc-card-sub">MAPE · RMSE ${m.rmse}</span>
+      </div>`).join('');
+  }
+
+  const tableEl = document.getElementById('forecast-table-wrap');
+  if (tableEl) {
+    const best = data.modelos[data.mejor_modelo];
+    tableEl.innerHTML = `
+      <div class="rend-meta">Pronóstico con ${best.nombre} (mejor MAPE en validación) — próximos ${best.forecast.length} meses</div>
+      <div class="comp-table-wrap">
+        <div class="comp-table-head" style="grid-template-columns:repeat(${best.forecast.length}, 1fr)">
+          ${best.forecast.map(f => `<span>${f.periodo}</span>`).join('')}
+        </div>
+        <div class="comp-table-row" style="grid-template-columns:repeat(${best.forecast.length}, 1fr)">
+          ${best.forecast.map(f => `<span>${f.valor} <span style="color:var(--text3);font-size:10px">(${f.lo}–${f.hi})</span></span>`).join('')}
+        </div>
+      </div>`;
+  }
+
+  renderForecastChart(data);
+}
+
+async function renderForecastTab() {
+  const tabEl = document.getElementById('tab-pronostico');
+  if (!tabEl) return;
+
+  tabEl.innerHTML = `
+    <div class="rend-tab-wrap">
+      <div id="forecast-tab-content">
+        <div class="loading-state"><div class="spinner"></div><span>Calculando pronóstico...</span></div>
+      </div>
+    </div>`;
+
+  const content = document.getElementById('forecast-tab-content');
+
+  try {
+    const res = await fetch(`${API_URL}/forecast`);
+    if (!res.ok) throw new Error();
+    _forecastData = await res.json();
+    const varKeys = Object.keys(_forecastData);
+    if (!varKeys.length) throw new Error();
+
+    content.innerHTML = `
+      <div class="eda-var-tabs" style="margin:16px 16px 0">
+        ${varKeys.map((k, i) => `<button class="eda-var-tab${i === 0 ? ' active' : ''}" data-var="${k}">${_forecastData[k].label}</button>`).join('')}
+      </div>
+      <div class="comp-content" style="padding:0 16px 24px">
+        <div class="eda-card">
+          <p class="shap-chart-title">Serie histórica + pronóstico (4 meses)</p>
+          <div class="eda-chart-wrap" style="height:320px"><canvas id="forecast-chart"></canvas></div>
+        </div>
+        <div class="acc-summary" id="forecast-metrics" style="grid-template-columns:repeat(2,1fr)"></div>
+        <div id="forecast-table-wrap"></div>
+      </div>`;
+
+    renderForecastVariable(varKeys[0]);
+
+    tabEl.querySelectorAll('.eda-var-tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        tabEl.querySelectorAll('.eda-var-tab').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        renderForecastVariable(btn.dataset.var);
+      });
+    });
+  } catch (_) {
+    content.innerHTML = '<div class="empty-tab">No se pudo cargar el pronóstico</div>';
   }
 }
 
