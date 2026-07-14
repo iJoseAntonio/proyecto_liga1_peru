@@ -1882,8 +1882,14 @@ async function renderConsultasTab() {
     </div>`;
 
   document.getElementById('consulta-calc-btn').addEventListener('click', onConsultaCalc);
-  document.getElementById('consulta-home').addEventListener('change', () => updateTeamPickerLogo('consulta-home', 'consulta-home-logo'));
-  document.getElementById('consulta-away').addEventListener('change', () => updateTeamPickerLogo('consulta-away', 'consulta-away-logo'));
+  document.getElementById('consulta-home').addEventListener('change', () => {
+    updateTeamPickerLogo('consulta-home', 'consulta-home-logo');
+    excludeTeamFromOtherSelect('consulta-home', 'consulta-away', 'consulta-away-logo');
+  });
+  document.getElementById('consulta-away').addEventListener('change', () => {
+    updateTeamPickerLogo('consulta-away', 'consulta-away-logo');
+    excludeTeamFromOtherSelect('consulta-away', 'consulta-home', 'consulta-home-logo');
+  });
 
   // Independientes entre sí: Supabase no debe esperar a que el backend
   // de Render (plan free, con cold-start) responda para mostrar la lista.
@@ -1898,6 +1904,25 @@ function updateTeamPickerLogo(selectId, imgId) {
   const src = logoUrl(select.value);
   if (src) { img.src = src; img.style.display = ''; img.style.opacity = 1; }
   else { img.style.display = 'none'; }
+}
+
+// Evita que el mismo equipo quede seleccionado en ambos selects: deshabilita
+// esa opción en el otro select, y si ya estaba elegida ahí, la limpia.
+function excludeTeamFromOtherSelect(sourceId, otherId, otherLogoId) {
+  const source = document.getElementById(sourceId);
+  const other  = document.getElementById(otherId);
+  if (!source || !other) return;
+  const chosen = source.value;
+
+  Array.from(other.options).forEach(opt => {
+    if (!opt.value) return; // el placeholder "Selecciona equipo" siempre queda habilitado
+    opt.disabled = chosen !== '' && opt.value === chosen;
+  });
+
+  if (chosen && other.value === chosen) {
+    other.value = '';
+    updateTeamPickerLogo(otherId, otherLogoId);
+  }
 }
 
 async function loadTeamOptions() {
