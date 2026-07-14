@@ -578,6 +578,48 @@ async function renderPredictionsTab(round) {
   }
 }
 
+// 3 barras apiladas — reutilizadas por buildPredCardHTML (Predicciones) y
+// renderConsultaPreview (Consultas), por eso viven a nivel de módulo.
+const BARS = [
+  { label: 'XG', threshold: '≥ 1.5', key: 'xg'    },
+  { label: 'GA', threshold: '≥ 2',   key: 'goles'  },
+  { label: 'TP', threshold: '≥ 5',   key: 'tiros'  },
+];
+
+function barsHome(d) {
+  return BARS.map(b => {
+    const m = d[b.key];
+    return `
+      <div class="pred-bar-row">
+        <span class="pred-bar-label">
+          <span class="pbl-abbr">${b.label}</span>
+          <span class="pbl-thresh">${b.threshold}</span>
+        </span>
+        <div class="pred-bar-track">
+          <div class="pred-bar-fill ${m.alto ? 'p-high' : 'p-low'}" style="width:${m.probabilidad}%"></div>
+        </div>
+        <span class="pred-bar-pct">${m.probabilidad}%</span>
+      </div>`;
+  }).join('');
+}
+
+function barsAway(d) {
+  return BARS.map(b => {
+    const m = d[b.key];
+    return `
+      <div class="pred-bar-row away">
+        <span class="pred-bar-pct">${m.probabilidad}%</span>
+        <div class="pred-bar-track away">
+          <div class="pred-bar-fill ${m.alto ? 'p-high' : 'p-low'}" style="width:${m.probabilidad}%"></div>
+        </div>
+        <span class="pred-bar-label" style="text-align:right">
+          <span class="pbl-abbr">${b.label}</span>
+          <span class="pbl-thresh">${b.threshold}</span>
+        </span>
+      </div>`;
+  }).join('');
+}
+
 function buildPredCardHTML(m, data, result = null) {
   const finished = m.sh !== null;
 
@@ -593,47 +635,6 @@ function buildPredCardHTML(m, data, result = null) {
     if (cumple === undefined || cumple === null) return '';
     const ok = predicted === cumple;
     return `<span class="pred-check ${ok ? 'ok' : 'fail'}">${ok ? '✓' : '✗'}</span>`;
-  }
-
-  // 3 barras apiladas
-  const BARS = [
-    { label: 'XG', threshold: '≥ 1.5', key: 'xg'    },
-    { label: 'GA', threshold: '≥ 2',   key: 'goles'  },
-    { label: 'TP', threshold: '≥ 5',   key: 'tiros'  },
-  ];
-
-  function barsHome(d) {
-    return BARS.map(b => {
-      const m = d[b.key];
-      return `
-        <div class="pred-bar-row">
-          <span class="pred-bar-label">
-            <span class="pbl-abbr">${b.label}</span>
-            <span class="pbl-thresh">${b.threshold}</span>
-          </span>
-          <div class="pred-bar-track">
-            <div class="pred-bar-fill ${m.alto ? 'p-high' : 'p-low'}" style="width:${m.probabilidad}%"></div>
-          </div>
-          <span class="pred-bar-pct">${m.probabilidad}%</span>
-        </div>`;
-    }).join('');
-  }
-
-  function barsAway(d) {
-    return BARS.map(b => {
-      const m = d[b.key];
-      return `
-        <div class="pred-bar-row away">
-          <span class="pred-bar-pct">${m.probabilidad}%</span>
-          <div class="pred-bar-track away">
-            <div class="pred-bar-fill ${m.alto ? 'p-high' : 'p-low'}" style="width:${m.probabilidad}%"></div>
-          </div>
-          <span class="pred-bar-label" style="text-align:right">
-            <span class="pbl-abbr">${b.label}</span>
-            <span class="pbl-thresh">${b.threshold}</span>
-          </span>
-        </div>`;
-    }).join('');
   }
 
   // Stats reales del partido
