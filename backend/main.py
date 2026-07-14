@@ -683,7 +683,7 @@ def _precompute_forecast():
     print(f"Pronóstico precomputado: {len(resultado)} series.")
 
 
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD"])
 @limiter.limit("60/minute")
 def root(request: Request):
     return {
