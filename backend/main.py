@@ -395,7 +395,9 @@ def _precompute_eda():
         whisker_low  = float(inside.min()) if not inside.empty else float(serie.min())
         whisker_high = float(inside.max()) if not inside.empty else float(serie.max())
 
-        counts, edges = np.histogram(serie, bins=10)
+        # Regla de Sturges: k = ceil(log2(n)) + 1 — numero de intervalos
+        # segun el tamano real de la muestra, en vez de un valor fijo.
+        counts, edges = np.histogram(serie, bins='sturges')
 
         variables[col] = {
             'stats': {
