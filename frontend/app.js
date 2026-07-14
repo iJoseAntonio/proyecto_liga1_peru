@@ -1449,7 +1449,7 @@ async function renderEdaTab() {
     let clusterHtml;
     if (clusData) {
       clusterHtml = `
-        <div class="comp-content">
+        <div class="comp-content" style="margin-top:6px">
           <div class="eda-grid">
             <div class="eda-card">
               <p class="shap-chart-title">Método del Codo — Inercia por k</p>
