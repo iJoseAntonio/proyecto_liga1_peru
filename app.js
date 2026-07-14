@@ -1681,10 +1681,25 @@ function renderConsultaPreview(home, away, data) {
   if (!el) return;
   el.innerHTML = `
     <div class="consulta-preview-box">
-      <div class="consulta-preview-row"><span>${home}</span><span>xG ${data.local.xg.probabilidad}% · Tiros ${data.local.tiros.probabilidad}% · Goles ${data.local.goles.probabilidad}%</span></div>
-      <div class="consulta-preview-row"><span>${away}</span><span>xG ${data.visitante.xg.probabilidad}% · Tiros ${data.visitante.tiros.probabilidad}% · Goles ${data.visitante.goles.probabilidad}%</span></div>
-      <input id="consulta-nota" type="text" class="consulta-nota-input" placeholder="Nota (opcional)">
-      <button id="consulta-save-btn" class="pred-explain-btn">💾 Guardar esta consulta</button>
+      <div class="consulta-preview-teams">
+        <div class="pred-team home">
+          <div class="pred-team-head">
+            <img class="pred-logo" src="${logoUrl(home)}" alt="${home}" onerror="this.style.opacity=0.15">
+            <span class="pred-name">${home}</span>
+          </div>
+          <div class="pred-bars-stack">${barsHome(data.local)}</div>
+        </div>
+        <div class="pred-center"><div class="consulta-vs-badge">VS</div></div>
+        <div class="pred-team away">
+          <div class="pred-team-head away">
+            <span class="pred-name">${away}</span>
+            <img class="pred-logo" src="${logoUrl(away)}" alt="${away}" onerror="this.style.opacity=0.15">
+          </div>
+          <div class="pred-bars-stack">${barsAway(data.visitante)}</div>
+        </div>
+      </div>
+      <input id="consulta-nota" type="text" class="consulta-nota-input" placeholder="Nota (opcional) — ej. \"revisar antes del partido\"">
+      <button id="consulta-save-btn" class="consulta-save-btn-primary">💾 Guardar esta consulta</button>
     </div>`;
   document.getElementById('consulta-save-btn').addEventListener('click', onConsultaSave);
 }
@@ -1749,20 +1764,28 @@ function renderConsultasList(rows) {
   const wrap = document.getElementById('consultas-list-wrap');
   if (!wrap) return;
   if (!rows.length) {
-    wrap.innerHTML = '<div class="empty-tab">Aún no hay consultas guardadas</div>';
+    wrap.innerHTML = `
+      <div class="consulta-empty">
+        <p>Aún no hay consultas guardadas</p>
+        <span>Calcula una predicción arriba y guárdala para verla aquí</span>
+      </div>`;
     return;
   }
 
   const badge = (val, alto) => `<span class="acc-badge ${alto ? 'acc-green' : 'acc-red'}">${val ?? '—'}%</span>`;
+  const teamLogo = name => {
+    const src = logoUrl(name);
+    return src ? `<img class="consulta-team-logo-sm" src="${src}" alt="" onerror="this.style.opacity=0.15">` : '';
+  };
 
   wrap.innerHTML = `
     <div class="consulta-row consulta-head">
       <span>Fecha</span><span>Partido</span><span>xG</span><span>Tiros</span><span>Goles</span><span>Nota</span><span></span>
     </div>
-    ${rows.map(r => `
-      <div class="consulta-row" data-id="${r.id}" style="animation-delay:${Math.min(rows.indexOf(r), 10) * 0.04}s">
+    ${rows.map((r, i) => `
+      <div class="consulta-row" data-id="${r.id}" style="animation-delay:${Math.min(i, 10) * 0.04}s">
         <span class="consulta-fecha">${fmtTimestamp(r.created_at)}</span>
-        <span class="consulta-partido">${r.equipo_local} vs ${r.equipo_visitante}</span>
+        <span class="consulta-partido">${teamLogo(r.equipo_local)}${r.equipo_local} <span class="consulta-partido-vs">vs</span> ${r.equipo_visitante}${teamLogo(r.equipo_visitante)}</span>
         <span>${badge(r.prob_xg, r.alto_xg)}</span>
         <span>${badge(r.prob_tiros, r.alto_tiros)}</span>
         <span>${badge(r.prob_goles, r.alto_goles)}</span>
@@ -1834,12 +1857,18 @@ async function renderConsultasTab() {
       <div style="flex:1; overflow-y:auto">
         <div class="eda-card" style="margin:16px 16px 12px">
           <p class="shap-chart-title">Nueva consulta</p>
-          <div class="consulta-form-row">
-            <select id="consulta-home" class="consulta-select"><option value="">Cargando equipos… (puede tardar ~30s la primera vez)</option></select>
-            <span class="consulta-vs">vs</span>
-            <select id="consulta-away" class="consulta-select"><option value="">Cargando equipos… (puede tardar ~30s la primera vez)</option></select>
-            <button id="consulta-calc-btn" class="pred-explain-btn">Calcular predicción</button>
+          <div class="consulta-teams-row">
+            <div class="consulta-team-picker">
+              <img id="consulta-home-logo" class="consulta-picker-logo" alt="">
+              <select id="consulta-home" class="consulta-select"><option value="">Cargando equipos…</option></select>
+            </div>
+            <div class="consulta-vs-badge">VS</div>
+            <div class="consulta-team-picker away">
+              <select id="consulta-away" class="consulta-select"><option value="">Cargando equipos…</option></select>
+              <img id="consulta-away-logo" class="consulta-picker-logo" alt="">
+            </div>
           </div>
+          <button id="consulta-calc-btn" class="consulta-calc-btn">Calcular predicción</button>
           <div id="consulta-preview"></div>
         </div>
 
@@ -1853,11 +1882,22 @@ async function renderConsultasTab() {
     </div>`;
 
   document.getElementById('consulta-calc-btn').addEventListener('click', onConsultaCalc);
+  document.getElementById('consulta-home').addEventListener('change', () => updateTeamPickerLogo('consulta-home', 'consulta-home-logo'));
+  document.getElementById('consulta-away').addEventListener('change', () => updateTeamPickerLogo('consulta-away', 'consulta-away-logo'));
 
   // Independientes entre sí: Supabase no debe esperar a que el backend
   // de Render (plan free, con cold-start) responda para mostrar la lista.
   loadTeamOptions();
   loadConsultasList();
+}
+
+function updateTeamPickerLogo(selectId, imgId) {
+  const select = document.getElementById(selectId);
+  const img = document.getElementById(imgId);
+  if (!select || !img) return;
+  const src = logoUrl(select.value);
+  if (src) { img.src = src; img.style.display = ''; img.style.opacity = 1; }
+  else { img.style.display = 'none'; }
 }
 
 async function loadTeamOptions() {

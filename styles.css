@@ -1854,46 +1854,97 @@ img { display: block; }
 .confmat-metrics { grid-template-columns: repeat(4, 1fr); max-width: 500px; margin: 0 auto; padding: 0; }
 
 /* ── CONSULTAS (CRUD) ─────────────────────────────────────────────────────── */
-.consulta-form-row {
+.consulta-teams-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.consulta-team-picker {
   display: flex;
   align-items: center;
   gap: 10px;
-  flex-wrap: wrap;
+  flex: 1;
+  min-width: 170px;
 }
+.consulta-team-picker.away { flex-direction: row-reverse; }
+
+.consulta-picker-logo {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  flex-shrink: 0;
+  display: none;
+  animation: fadeIn 0.2s ease both;
+}
+
 .consulta-select {
   flex: 1;
-  min-width: 160px;
-  padding: 7px 10px;
+  min-width: 140px;
+  padding: 8px 10px;
   background: var(--surface3);
   border: 1px solid var(--border);
   border-radius: 8px;
   color: var(--text);
   font-size: 12px;
   font-family: 'DM Sans', sans-serif;
+  transition: border-color 0.2s;
 }
-.consulta-vs { font-size: 11px; color: var(--text2); font-weight: 600; }
+.consulta-select:hover, .consulta-select:focus { border-color: var(--accent); outline: none; }
+
+.consulta-vs-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text2);
+  flex-shrink: 0;
+  letter-spacing: 0.5px;
+}
+
+.consulta-calc-btn {
+  display: block;
+  margin: 16px auto 0;
+  padding: 9px 26px;
+  border: none;
+  border-radius: 20px;
+  background: linear-gradient(90deg, var(--accent), #a78bfa);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  box-shadow: 0 2px 12px rgba(108, 99, 255, 0.3);
+  transition: transform 0.15s, box-shadow 0.2s;
+}
+.consulta-calc-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(108, 99, 255, 0.45); }
+.consulta-calc-btn:active { transform: translateY(0); }
 
 .consulta-preview-box {
-  margin-top: 14px;
-  padding-top: 12px;
+  margin-top: 16px;
+  padding-top: 16px;
   border-top: 1px dashed var(--border);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
 }
-.consulta-preview-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 12px;
-  color: var(--text);
+
+.consulta-preview-teams {
+  display: grid;
+  grid-template-columns: 1fr 44px 1fr;
   gap: 10px;
+  align-items: start;
 }
-.consulta-preview-row span:first-child { font-weight: 600; }
-.consulta-preview-row span:last-child { color: var(--text2); font-family: 'DM Mono', monospace; font-size: 11px; }
 
 .consulta-nota-input {
-  padding: 7px 10px;
+  padding: 8px 10px;
   background: var(--surface3);
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -1901,8 +1952,27 @@ img { display: block; }
   font-size: 12px;
   font-family: 'DM Sans', sans-serif;
   width: 100%;
+  transition: border-color 0.2s;
 }
+.consulta-nota-input:focus { border-color: var(--accent); outline: none; }
 .consulta-nota-input-inline { width: auto; flex: 1; padding: 3px 8px; font-size: 11px; }
+
+.consulta-save-btn-primary {
+  align-self: center;
+  padding: 9px 22px;
+  border: none;
+  border-radius: 20px;
+  background: linear-gradient(90deg, var(--green), #22d38a);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  box-shadow: 0 2px 12px rgba(21, 177, 104, 0.3);
+  transition: transform 0.15s, box-shadow 0.2s;
+}
+.consulta-save-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(21, 177, 104, 0.45); }
+.consulta-save-btn-primary:disabled { opacity: 0.6; cursor: default; transform: none; }
 
 .consulta-row {
   display: grid;
@@ -1929,7 +1999,9 @@ img { display: block; }
   z-index: 5;
 }
 .consulta-fecha { color: var(--text2); font-family: 'DM Mono', monospace; font-size: 10px; }
-.consulta-partido { font-weight: 600; }
+.consulta-partido { font-weight: 600; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.consulta-partido-vs { color: var(--text3); font-weight: 400; font-size: 9px; margin: 0 1px; }
+.consulta-team-logo-sm { width: 16px; height: 16px; object-fit: contain; flex-shrink: 0; }
 .consulta-nota-cell { color: var(--text2); display: flex; align-items: center; gap: 4px; }
 .consulta-actions { display: flex; gap: 4px; justify-content: flex-end; }
 .consulta-edit-btn, .consulta-del-btn, .consulta-save-nota-btn {
@@ -1944,4 +2016,11 @@ img { display: block; }
 }
 .consulta-edit-btn:hover, .consulta-save-nota-btn:hover { border-color: var(--accent); color: var(--text); }
 .consulta-del-btn:hover { border-color: var(--red); color: var(--red); }
+
+.consulta-empty {
+  text-align: center;
+  padding: 36px 20px;
+}
+.consulta-empty p { color: var(--text2); font-size: 13px; margin-bottom: 4px; font-weight: 500; }
+.consulta-empty span { color: var(--text3); font-size: 11px; }
 
