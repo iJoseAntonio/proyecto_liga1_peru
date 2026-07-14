@@ -1712,15 +1712,26 @@ async function onConsultaCalc() {
     preview.innerHTML = '<div class="empty-tab">Elige dos equipos distintos</div>';
     return;
   }
-  preview.innerHTML = '<div class="pred-explain-loading">Calculando predicción…</div>';
+  preview.innerHTML = '<div class="pred-explain-loading">Calculando predicción… (si el backend estaba inactivo, la primera consulta puede tardar ~30-50s)</div>';
   try {
     const res = await fetch(`${API_URL}/predict-match?home=${encodeURIComponent(home)}&away=${encodeURIComponent(away)}`);
-    if (!res.ok) throw new Error();
+    if (!res.ok) {
+      let detail = '';
+      try { detail = (await res.json()).detail || ''; } catch (_) { /* respuesta sin JSON */ }
+      throw new Error(detail || `El servidor respondió con error ${res.status}`);
+    }
     const data = await res.json();
     _consultaPreviewData = { home, away, data };
     renderConsultaPreview(home, away, data);
-  } catch (_) {
-    preview.innerHTML = '<div class="empty-tab">No se pudo calcular la predicción para estos equipos</div>';
+  } catch (err) {
+    const msg = (err && err.message) || 'el backend puede estar iniciando (cold-start de Render) — reintenta en unos segundos';
+    preview.innerHTML = `
+      <div class="empty-tab">
+        No se pudo calcular la predicción: ${msg}
+        <div style="margin-top:10px"><button id="consulta-retry-btn" class="consulta-calc-btn" style="margin:0">Reintentar</button></div>
+      </div>`;
+    const retryBtn = document.getElementById('consulta-retry-btn');
+    if (retryBtn) retryBtn.addEventListener('click', onConsultaCalc);
   }
 }
 
