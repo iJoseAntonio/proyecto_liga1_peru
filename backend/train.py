@@ -19,10 +19,10 @@ print("=" * 55)
 df = pd.read_csv('../data/bd_liga1.csv', sep=';', encoding='utf-8-sig')
 print(f"Dataset total: {df.shape[0]} partidos")
 
-FECHA_CORTE_ENTRENAMIENTO = pd.Timestamp('2026-04-19')
+FECHA_CORTE_ENTRENAMIENTO = pd.Timestamp('2026-04-27')
 df['_fecha_dt'] = pd.to_datetime(df['fecha'], format='%d/%m/%Y', errors='coerce')
 df = df[df['_fecha_dt'] <= FECHA_CORTE_ENTRENAMIENTO].drop(columns=['_fecha_dt']).copy()
-print(f"Dataset filtrado (hasta 19/04/2026): {df.shape[0]} partidos")
+print(f"Dataset filtrado (hasta 27/04/2026): {df.shape[0]} partidos")
 
 # ── 2. Reestructurar (mismo pipeline del notebook) ────────────────────────────
 columnas_estadisticas = [
