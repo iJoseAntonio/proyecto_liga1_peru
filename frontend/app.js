@@ -1587,8 +1587,16 @@ function renderForecastVariable(varKey) {
     metricsEl.innerHTML = Object.entries(data.modelos).map(([mk, m]) => `
       <div class="acc-card">
         <span class="acc-card-label">${m.nombre}${mk === data.mejor_modelo ? ' ★ mejor' : ''}</span>
-        <span class="acc-card-value ${mk === data.mejor_modelo ? 'acc-green' : ''}">${m.mape}%</span>
-        <span class="acc-card-sub">MAPE · RMSE ${m.rmse}</span>
+        <div style="display:flex; gap:18px; align-items:flex-end; justify-content:center; width:100%">
+          <div style="display:flex; flex-direction:column; align-items:center; gap:3px">
+            <span class="acc-card-value ${mk === data.mejor_modelo ? 'acc-green' : ''}">${m.mape}%</span>
+            <span class="acc-card-sub">MAPE</span>
+          </div>
+          <div style="display:flex; flex-direction:column; align-items:center; gap:3px">
+            <span class="acc-card-value">${m.rmse}</span>
+            <span class="acc-card-sub">RMSE</span>
+          </div>
+        </div>
       </div>`).join('');
   }
 
@@ -1631,7 +1639,7 @@ async function renderForecastTab() {
     if (!varKeys.length) throw new Error();
 
     content.innerHTML = `
-      <div class="eda-var-tabs" style="margin:16px 16px 0">
+      <div class="eda-var-tabs" style="margin:22px 16px 0">
         ${varKeys.map((k, i) => `<button class="eda-var-tab${i === 0 ? ' active' : ''}" data-var="${k}">${_forecastData[k].label}</button>`).join('')}
       </div>
       <div class="comp-content" style="padding:0 16px 24px">
