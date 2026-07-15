@@ -1823,6 +1823,7 @@ img { display: block; }
   gap: 3px;
   max-width: 440px;
   margin: 0 auto 18px;
+  transform: translateX(-24px);
 }
 .confmat-corner { }
 .confmat-head {
@@ -1831,7 +1832,7 @@ img { display: block; }
   justify-content: center;
   text-align: center;
   font-size: 11px;
-  color: var(--text2);
+  color: #fff;
   padding: 6px 4px;
 }
 .confmat-head-row { justify-content: flex-end; text-align: right; padding-right: 10px; }

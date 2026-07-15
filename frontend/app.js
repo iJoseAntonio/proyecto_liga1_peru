@@ -907,7 +907,7 @@ function renderConfusionMatrix(target, modelName, confData) {
       <div class="acc-card"><span class="acc-card-label">Recall</span><span class="acc-card-value">${(m.recall * 100).toFixed(1)}%</span></div>
       <div class="acc-card"><span class="acc-card-label">F1</span><span class="acc-card-value">${(m.f1 * 100).toFixed(1)}%</span></div>
     </div>
-    <div class="rend-meta">${total} predicciones de test (conjunto no visto en entrenamiento) · ${confData[target].positivos_pct}% positivos reales · ${modelName}</div>`;
+    <div class="rend-meta" style="margin-top:14px">${total} predicciones de test (conjunto no visto en entrenamiento) · ${confData[target].positivos_pct}% positivos reales · ${modelName}</div>`;
 }
 
 function renderCompChart(varKey, metricsData) {
