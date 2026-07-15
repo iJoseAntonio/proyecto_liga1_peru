@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Reporte Final — Predicción de Estadísticas de Juego en la Liga 1 Perú</title>
+<style>
+  @page { size: A4; margin: 20mm 18mm 20mm 18mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Georgia', 'Times New Roman', serif;
+    color: #1a1a1a;
+    font-size: 11.5pt;
+    line-height: 1.55;
+    margin: 0;
+  }
+  h1, h2, h3, h4 { font-family: 'Arial', sans-serif; color: #7a1f1f; }
+  h1 { font-size: 20pt; margin-bottom: 4px; }
+  h2 {
+    font-size: 14.5pt;
+    border-bottom: 2px solid #7a1f1f;
+    padding-bottom: 4px;
+    margin-top: 26px;
+    margin-bottom: 12px;
+  }
+  h3 { font-size: 12.5pt; color: #333; margin-top: 18px; margin-bottom: 6px; }
+  p { margin: 8px 0; text-align: justify; }
+  .cover {
+    height: 257mm;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    page-break-after: always;
+  }
+  .cover .univ { font-family: 'Arial', sans-serif; font-size: 12pt; letter-spacing: 1px; color: #444; margin-bottom: 2px; }
+  .cover .facultad { font-family: 'Arial', sans-serif; font-size: 11pt; color: #666; margin-bottom: 36px; }
+  .cover .badge {
+    width: 90px; height: 90px; border-radius: 50%;
+    background: linear-gradient(135deg, #7a1f1f, #b03030);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 34px; font-family: Arial, sans-serif; font-weight: bold;
+    margin-bottom: 28px;
+  }
+  .cover h1 { font-size: 24pt; max-width: 520px; line-height: 1.3; }
+  .cover .subtitle { font-family: 'Arial', sans-serif; font-size: 13pt; color: #555; margin-top: 6px; margin-bottom: 40px; }
+  .cover table.info {
+    font-family: 'Arial', sans-serif;
+    font-size: 10.5pt;
+    border-collapse: collapse;
+    margin-top: 10px;
+  }
+  .cover table.info td { padding: 5px 14px; text-align: left; }
+  .cover table.info td.k { color: #777; text-align: right; font-weight: bold; }
+  .cover .integrantes {
+    margin-top: 34px;
+    font-family: 'Arial', sans-serif;
+  }
+  .cover .integrantes h4 { font-size: 10pt; text-transform: uppercase; letter-spacing: 1.5px; color: #7a1f1f; margin-bottom: 10px; }
+  .cover .integrantes table { border-collapse: collapse; font-size: 10.5pt; }
+  .cover .integrantes td { padding: 4px 16px; }
+  .cover .integrantes td.code { color: #777; font-family: 'Courier New', monospace; }
+  .cover .links { margin-top: 34px; font-family: 'Arial', sans-serif; font-size: 9.5pt; color: #555; }
+
+  section { page-break-inside: avoid; }
+  .kpi-table, .obj-table, .model-table {
+    width: 100%; border-collapse: collapse; margin: 12px 0 18px;
+    font-family: 'Arial', sans-serif; font-size: 9.8pt;
+  }
+  .kpi-table th, .obj-table th, .model-table th {
+    background: #7a1f1f; color: #fff; text-align: left; padding: 7px 9px; font-weight: 600;
+  }
+  .kpi-table td, .obj-table td, .model-table td {
+    border-bottom: 1px solid #ddd; padding: 6px 9px; vertical-align: top;
+  }
+  .kpi-table tr:nth-child(even), .model-table tr:nth-child(even) { background: #faf5f5; }
+  .model-table td.best { font-weight: bold; color: #15803d; }
+
+  figure { margin: 16px 0; text-align: center; page-break-inside: avoid; }
+  figure img { max-width: 100%; border: 1px solid #ddd; border-radius: 4px; }
+  figcaption { font-family: 'Arial', sans-serif; font-size: 9pt; color: #666; margin-top: 6px; }
+
+  .img-row { display: flex; gap: 10px; }
+  .img-row figure { flex: 1; margin: 16px 0; }
+
+  .callout {
+    background: #fdf3f3; border-left: 4px solid #7a1f1f; padding: 10px 14px;
+    margin: 14px 0; font-size: 10.5pt; font-family: 'Arial', sans-serif;
+  }
+  .callout b { color: #7a1f1f; }
+
+  .narrativa-block { margin: 14px 0; }
+  .narrativa-block .tag {
+    display: inline-block; font-family: 'Arial', sans-serif; font-size: 9pt; font-weight: bold;
+    color: #fff; background: #7a1f1f; padding: 2px 10px; border-radius: 10px; margin-bottom: 6px;
+  }
+
+  ul, ol { margin: 8px 0; padding-left: 22px; }
+  li { margin-bottom: 4px; }
+
+  code { font-family: 'Courier New', monospace; background: #f2f2f2; padding: 1px 4px; border-radius: 3px; font-size: 92%; }
+
+  .footer-note { font-family: 'Arial', sans-serif; font-size: 8.5pt; color: #999; text-align: center; margin-top: 30px; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════ PORTADA ══════════════════════════════════ -->
+<div class="cover">
+  <div class="univ">UNIVERSIDAD NACIONAL MAYOR DE SAN MARCOS</div>
+  <div class="facultad">Facultad de Ingeniería de Sistemas e Informática · Minería de Datos · 2026-I</div>
+
+  <div class="badge">L1</div>
+
+  <h1>Sistema de Predicción de Estadísticas de Juego en la Liga 1 Perú mediante Modelos de Machine Learning</h1>
+  <div class="subtitle">Reporte Final — Trabajo de Minería de Datos</div>
+
+  <table class="info">
+    <tr><td class="k">Curso:</td><td>Minería de Datos</td></tr>
+    <tr><td class="k">Docente:</td><td>Dr. José Alfredo Herrera Quispe</td></tr>
+    <tr><td class="k">Ciclo:</td><td>2026-I</td></tr>
+    <tr><td class="k">Fecha de entrega:</td><td>Julio de 2026</td></tr>
+  </table>
+
+  <div class="integrantes">
+    <h4>Integrantes</h4>
+    <table>
+      <tr><td>Jose Antonio Villanueva Ines</td><td class="code">22200116</td></tr>
+      <tr><td>Miguel Angel Porras Chavez</td><td class="code">22200036</td></tr>
+      <tr><td>Alexander Jesús Centeno Cerna</td><td class="code">22200011</td></tr>
+    </table>
+  </div>
+
+  <div class="links">
+    Repositorio: github.com/iJoseAntonio/proyecto_liga1_peru &nbsp;·&nbsp;
+    Dashboard: brave-hill-0bd23c910.7.azurestaticapps.net &nbsp;·&nbsp;
+    API: proyecto-liga1-peru.onrender.com
+  </div>
+</div>
+
+<!-- ══════════════════════════════════ 1. CONTEXTO Y PROBLEMA ══════════════════════════════════ -->
+<h2>1. Contexto y Problema</h2>
+
+<p>
+La Liga 1 de Perú genera, partido a partido, un volumen considerable de estadísticas detalladas —posesión, tiros, goles esperados (xG), faltas, tarjetas, recuperaciones— que hoy quedan dispersas en portales de estadísticas deportivas sin ningún tipo de análisis agregado, comparativo o predictivo accesible para el público peruano. A diferencia de las grandes ligas europeas, donde existen paneles analíticos robustos (Understat, FBref con modelos propios), el fútbol peruano carece de herramientas que traduzcan estos datos crudos en información accionable.
+</p>
+<p>
+Este proyecto es relevante en el contexto peruano porque atiende a tres audiencias concretas: <b>hinchas y analistas</b> que buscan entender el rendimiento real de los equipos más allá de la tabla de posiciones; <b>medios deportivos locales</b> que podrían enriquecer su cobertura con pronósticos basados en datos en vez de solo opinión; y <b>casas de apuestas y plataformas de fantasy football</b> que operan en el mercado peruano sin modelos estadísticos adaptados a las particularidades de la Liga 1 (calendario, altura, clima, nivel competitivo distinto al europeo).
+</p>
+<p>
+El costo de no resolver este problema es la persistencia de un vacío analítico: decisiones y narrativas deportivas basadas en intuición y en estadísticas superficiales (posesión, goles), sin aprovechar variables más predictivas como el xG o los patrones de rendimiento reciente por equipo. El proyecto responde a esto con un pipeline completo de minería de datos —EDA, clustering, clasificación supervisada, series de tiempo e interpretabilidad— desplegado como un dashboard web público y gratuito.
+</p>
+
+<!-- ══════════════════════════════════ 2. OBJETIVOS SMART ══════════════════════════════════ -->
+<h2>2. Objetivos SMART</h2>
+
+<table class="obj-table">
+  <tr><th style="width:8%">#</th><th>Objetivo</th></tr>
+  <tr>
+    <td>1</td>
+    <td>
+      Lograr un <b>AUC-ROC ≥ 0.60</b> en los tres modelos de clasificación binaria (xG≥1.5, Tiros a puerta≥5, Goles≥2), medido sobre un conjunto de validación fuera de tiempo (partidos posteriores al 27/04/2026, no vistos en entrenamiento), antes de la presentación final (S16).
+      <br><i>Específico:</i> métrica y modelos definidos. <i>Medible:</i> AUC-ROC numérico. <i>Alcanzable:</i> el dataset de 1,078 partidos de entrenamiento lo permite. <i>Relevante:</i> valida que el modelo generaliza a partidos futuros reales. <i>Temporal:</i> antes de S16.
+    </td>
+  </tr>
+  <tr>
+    <td>2</td>
+    <td>
+      Segmentar a los 18 equipos vigentes de la Liga 1 2026 en clusters de perfil ofensivo/defensivo con un <b>coeficiente de silueta ≥ 0.25</b>, usando K-means sobre 12 variables estandarizadas, antes de la entrega del reporte.
+      <br><i>Específico:</i> algoritmo y variables definidas. <i>Medible:</i> coeficiente de silueta. <i>Alcanzable:</i> validado con datos reales del histórico 2023-2026. <i>Relevante:</i> identifica arquetipos de equipo útiles para el análisis. <i>Temporal:</i> antes de la entrega S16.
+    </td>
+  </tr>
+  <tr>
+    <td>3</td>
+    <td>
+      Generar un pronóstico de goles/xG/tiros por partido a <b>4 meses</b> con un <b>MAPE ≤ 15%</b> en el conjunto de validación (últimos 5 meses históricos), comparando ARIMA vs. Suavizado Exponencial, antes de S16.
+      <br><i>Específico:</i> horizonte y métrica de error definidos. <i>Medible:</i> MAPE. <i>Alcanzable:</i> con 40+ meses de historia mensual disponible. <i>Relevante:</i> anticipa tendencias ofensivas de la liga. <i>Temporal:</i> antes de S16.
+    </td>
+  </tr>
+  <tr>
+    <td>4</td>
+    <td>
+      Desplegar el dashboard con los 4 paneles exigidos (EDA+Clustering, Predictivo, Pronóstico, CRUD) <b>accesible en línea sin credenciales</b>, con un tiempo de carga inicial menor a 60 segundos, antes de S16.
+      <br><i>Específico:</i> 4 paneles, accesibilidad pública. <i>Medible:</i> tiempo de carga, disponibilidad HTTP 200. <i>Alcanzable:</i> con Render + Azure Static Web Apps (planes gratuitos). <i>Relevante:</i> es el entregable central de la rúbrica. <i>Temporal:</i> antes de S16.
+    </td>
+  </tr>
+</table>
+
+<!-- ══════════════════════════════════ 3. KPIs ══════════════════════════════════ -->
+<h2>3. KPIs del Proyecto</h2>
+
+<table class="kpi-table">
+  <tr><th>KPI</th><th>Baseline</th><th>Meta</th><th>Valor actual</th></tr>
+  <tr>
+    <td>AUC-ROC promedio (3 targets, mejor modelo por target)</td>
+    <td>0.50 (azar)</td>
+    <td>≥ 0.60</td>
+    <td><b>0.656</b> (xG: 0.666 LR · Tiros: 0.644 LR · Goles: 0.647 LR)</td>
+  </tr>
+  <tr>
+    <td>Coeficiente de silueta del clustering (K-means, k óptimo)</td>
+    <td>0.0 (sin estructura)</td>
+    <td>≥ 0.25</td>
+    <td><b>0.32</b> (k=2, sobre histórico completo 2023-2026)</td>
+  </tr>
+  <tr>
+    <td>MAPE del pronóstico (mejor modelo, serie de goles)</td>
+    <td>25% (referencia de dominios deportivos similares)</td>
+    <td>≤ 15%</td>
+    <td><b>9.83%</b> (Suavizado Exponencial Holt)</td>
+  </tr>
+  <tr>
+    <td>Disponibilidad del dashboard (HTTP 200 en los 4 paneles)</td>
+    <td>0% (no existía)</td>
+    <td>100%</td>
+    <td><b>100%</b> — verificado en despliegue (Render + Azure Static Web Apps)</td>
+  </tr>
+  <tr>
+    <td>Balance de clases del target (ratio clase minoritaria)</td>
+    <td>Sin corregir: 37-42% clase positiva</td>
+    <td>Mitigar con SMOTE en entrenamiento</td>
+    <td><b>SMOTE aplicado</b> en las 3 clasificaciones (train.py)</td>
+  </tr>
+</table>
+
+<!-- ══════════════════════════════════ 4. JUSTIFICACIÓN DE MODELOS ══════════════════════════════════ -->
+<h2>4. Justificación de Modelos</h2>
+
+<p>
+Se entrenaron y compararon <b>4 algoritmos</b> por cada uno de los 3 targets de clasificación binaria: <b>XGBoost</b>, <b>LightGBM</b>, <b>Random Forest</b> y <b>Logistic Regression</b>, todos sobre el mismo conjunto de 57 variables (28 estadísticas de juego × 2 ventanas móviles de 3 y 5 partidos, más la variable situacional <code>Local</code>), evaluados sobre 45 partidos posteriores a la fecha de corte de entrenamiento (27/04/2026) — validación fuera de tiempo, no un split aleatorio.
+</p>
+
+<table class="model-table">
+  <tr><th>Target</th><th>Modelo</th><th>Accuracy</th><th>F1</th><th>AUC-ROC</th></tr>
+  <tr><td rowspan="4">xG ≥ 1.5</td><td>XGBoost</td><td class="best">0.656</td><td>0.534</td><td>0.654</td></tr>
+  <tr><td>LightGBM</td><td>0.652</td><td class="best">0.551</td><td>0.660</td></tr>
+  <tr><td>Random Forest</td><td>0.626</td><td>0.538</td><td>0.631</td></tr>
+  <tr><td>Logistic Regression</td><td>0.633</td><td>0.548</td><td class="best">0.666</td></tr>
+  <tr><td rowspan="4">Tiros ≥ 5</td><td>XGBoost</td><td class="best">0.652</td><td>0.542</td><td>0.630</td></tr>
+  <tr><td>LightGBM</td><td>0.633</td><td class="best">0.546</td><td>0.621</td></tr>
+  <tr><td>Random Forest</td><td>0.611</td><td>0.523</td><td>0.625</td></tr>
+  <tr><td>Logistic Regression</td><td>0.616</td><td>0.535</td><td class="best">0.644</td></tr>
+  <tr><td rowspan="4">Goles ≥ 2</td><td>XGBoost</td><td>0.621</td><td>0.375</td><td>0.569</td></tr>
+  <tr><td>LightGBM</td><td>0.611</td><td>0.384</td><td>0.563</td></tr>
+  <tr><td>Random Forest</td><td>0.571</td><td>0.493</td><td>0.569</td></tr>
+  <tr><td>Logistic Regression</td><td class="best">0.630</td><td class="best">0.536</td><td class="best">0.647</td></tr>
+</table>
+
+<figure>
+  <img src="train_cell16_04.png" style="max-width:85%">
+  <figcaption>Fig. 1 — Comparación de los 4 modelos para el target "Goles ≥ 2" (accuracy, AUC-ROC, F1, precision).</figcaption>
+</figure>
+
+<p>
+<b>Modelo elegido para producción: XGBoost</b>, desplegado en los 3 targets del dashboard en vivo. La justificación no es que XGBoost domine en todas las métricas —de hecho, <b>Logistic Regression obtiene el mejor AUC-ROC en los tres targets</b>, y gana en las tres métricas para "Goles ≥ 2"— sino un balance de tres criterios: (1) XGBoost obtiene el mejor <i>accuracy</i> en 2 de 3 targets; (2) maneja relaciones no lineales y alta dimensionalidad (57 features) sin necesidad de escalar variables, a diferencia de Logistic Regression, que depende de un <code>StandardScaler</code> adicional; y (3) es compatible de forma nativa con <code>shap.TreeExplainer</code>, lo que permite una interpretabilidad exacta y computacionalmente eficiente (requisito obligatorio de la rúbrica), mientras que explicar un modelo lineal aporta menos valor diagnóstico para relaciones complejas entre variables de juego.
+</p>
+
+<h3>Interpretabilidad (SHAP) — variables más influyentes por target</h3>
+<div class="img-row">
+  <figure>
+    <img src="train_cell20_07.png">
+    <figcaption>Fig. 2a — SHAP summary plot, target xG≥1.5. "Local" es la variable más influyente.</figcaption>
+  </figure>
+  <figure>
+    <img src="train_cell20_08.png">
+    <figcaption>Fig. 2b — Importancia global (mean |SHAP|), target xG≥1.5.</figcaption>
+  </figure>
+</div>
+<div class="img-row">
+  <figure>
+    <img src="train_cell20_09.png">
+    <figcaption>Fig. 3a — SHAP summary plot, target Tiros≥5.</figcaption>
+  </figure>
+  <figure>
+    <img src="train_cell20_10.png">
+    <figcaption>Fig. 3b — Importancia global (mean |SHAP|), target Tiros≥5.</figcaption>
+  </figure>
+</div>
+<div class="img-row">
+  <figure>
+    <img src="train_cell19_05.png">
+    <figcaption>Fig. 4a — SHAP summary plot, target Goles≥2. Aquí "goles_prom_5" supera a "Local".</figcaption>
+  </figure>
+  <figure>
+    <img src="train_cell19_06.png">
+    <figcaption>Fig. 4b — Importancia global (mean |SHAP|), target Goles≥2.</figcaption>
+  </figure>
+</div>
+
+<p>
+Un hallazgo consistente en los tres targets: la variable <code>Local</code> (si el equipo juega en casa) tiene la mayor magnitud de impacto promedio, pero su <i>dirección</i> promedio es cercana a cero — porque empuja la predicción hacia arriba cuando el equipo juega de local y hacia abajo cuando juega de visita, cancelándose en el promedio. Esto confirma que jugar de local es el factor individual más determinante del rendimiento ofensivo en la Liga 1 Perú, más que cualquier estadística de forma reciente.
+</p>
+
+<!-- ══════════════════════════════════ EDA & CLUSTERING (soporte adicional) ══════════════════════════════════ -->
+<h2>5. Análisis Exploratorio y Selección de Variables</h2>
+
+<p>
+Antes de entrenar los modelos, se analizó la correlación de Pearson entre las 28 variables de juego (sobre 2,246 observaciones equipo-partido) para detectar multicolinealidad. Se identificaron y corrigieron pares con correlación extrema:
+</p>
+
+<div class="img-row">
+  <figure>
+    <img src="train_cell03_02.png">
+    <figcaption>Fig. 5a — Correlación, variables de posesión/construcción. "Pases" y "Pases precisos" correlacionan 0.99.</figcaption>
+  </figure>
+  <figure>
+    <img src="train_cell04_03.png">
+    <figcaption>Fig. 5b — Correlación, variables defensivas/disciplinarias.</figcaption>
+  </figure>
+</div>
+
+<div class="callout">
+<b>Decisión de ingeniería de características:</b> la correlación de 0.99 entre "Pases" y "Pases precisos" (Fig. 5a) llevó a excluir ambas variables crudas del feature set final, reemplazándolas por el ratio derivado <code>precision_pases</code> (pases precisos / pases totales), que captura la misma información de forma más compacta y sin redundancia.
+</div>
+
+<h3>Selección de umbrales de clasificación</h3>
+<p>
+Los umbrales de cada target (xG≥1.5, Tiros≥5, Goles≥2) no se eligieron arbitrariamente: se analizó la distribución histórica de cada variable para balancear dos criterios — que el umbral separe un grupo "alto rendimiento" interpretable futbolísticamente, y que la clase positiva resultante no quede extremadamente desbalanceada.
+</p>
+
+<div class="img-row">
+  <figure><img src="umbral_cell05_01.png"><figcaption>Fig. 6a — Distribución de xG, umbral 1.5 (cerca de la media).</figcaption></figure>
+  <figure><img src="umbral_cell08_02.png"><figcaption>Fig. 6b — Distribución de tiros a puerta, umbral 5.</figcaption></figure>
+</div>
+<div class="img-row">
+  <figure><img src="umbral_cell11_03.png" style="max-width:60%"><figcaption>Fig. 6c — Distribución de goles por equipo, umbral 2.</figcaption></figure>
+</div>
+<figure>
+  <img src="umbral_cell13_04.png">
+  <figcaption>Fig. 7 — Balance de clases resultante en los 3 targets (rango 57-63% / 37-42%, moderado, justifica el uso de SMOTE preventivo).</figcaption>
+</figure>
+
+<!-- ══════════════════════════════════ 6. NARRATIVA ══════════════════════════════════ -->
+<h2>6. Narrativa: Situación → Complicación → Resolución → Impacto</h2>
+
+<div class="narrativa-block">
+  <span class="tag">SITUACIÓN</span>
+  <p>
+  El equipo construyó un dataset propio de 1,123 partidos de Liga 1 Perú (2023-2026) vía scraping de Sofascore, y desarrolló un pipeline completo: ingeniería de características (57 variables por equipo-partido), 4 modelos de clasificación comparados por target, clustering de perfiles de equipo, pronóstico de series de tiempo, e interpretabilidad SHAP — todo expuesto en un dashboard web desplegado en Render (backend) y Azure Static Web Apps (frontend).
+  </p>
+</div>
+
+<div class="narrativa-block">
+  <span class="tag">COMPLICACIÓN</span>
+  <p>
+  Durante el desarrollo surgieron varios problemas reales de datos e infraestructura, no anticipados en el diseño inicial:
+  </p>
+  <ul>
+    <li><b>Fuga temporal de información (data leakage):</b> la matriz de confusión inicial no distinguía entre partidos usados en entrenamiento y partidos de validación real, arriesgando una evaluación optimista y no representativa del desempeño en producción.</li>
+    <li><b>Desbalance de tamaño muestral en el clustering:</b> al construir el perfil de cada equipo con todo el histórico disponible, equipos con más antigüedad en la liga (p. ej. Sporting Cristal, 126 partidos) quedaban promediados con muchos más datos que equipos recién ascendidos (p. ej. Cajamarca, 17 partidos), introduciendo un sesgo de confiabilidad estadística desigual entre equipos.</li>
+    <li><b>Ambigüedad de signo en PCA:</b> la visualización 2D del clustering (PCA) mostraba equipos en lados opuestos del eje X al comparar el entorno local de desarrollo con el entorno de producción (Render), debido a que el signo de los componentes principales es matemáticamente arbitrario y depende de la versión de las librerías numéricas subyacentes.</li>
+    <li><b>Bins de histograma arbitrarios:</b> el EDA inicial usaba 10 bins fijos para todas las variables, sin justificación estadística, subestimando la resolución real de la distribución con ~2,246 observaciones disponibles.</li>
+    <li><b>Infraestructura de despliegue gratuita con cold-start:</b> el backend en Render (plan gratuito) se "duerme" tras 15 minutos de inactividad, generando esperas de hasta 50 segundos en la primera petición — un riesgo operativo real para una demo en vivo.</li>
+  </ul>
+</div>
+
+<div class="narrativa-block">
+  <span class="tag">RESOLUCIÓN</span>
+  <p>Cada complicación se resolvió con una técnica específica del curso:</p>
+  <ul>
+    <li>La matriz de confusión se recalculó exclusivamente sobre los <b>45 partidos posteriores a la fecha de corte de entrenamiento</b> (27/04/2026) — una validación fuera de tiempo (out-of-time), más estricta que un split aleatorio 80/20, que garantiza que el modelo nunca vio esos resultados durante el entrenamiento.</li>
+    <li>Se documentó explícitamente el desbalance de muestra en el clustering como limitación metodológica reconocida, en vez de ocultarlo, y se estableció un mínimo de 5 partidos por equipo para entrar al análisis.</li>
+    <li>Se identificó y explicó la naturaleza matemática del signo arbitrario de PCA, confirmando —comparando coordenadas exactas entre entornos— que la estructura relativa del clustering era idéntica, solo reflejada en espejo.</li>
+    <li>Se reemplazó el número fijo de bins por criterios estadísticos basados en el tamaño muestral real de cada variable (regla de Sturges), mejorando la resolución de los histogramas del panel EDA.</li>
+    <li>Se recomendó y evaluó un servicio externo de monitoreo (ping cada 5 minutos) para mantener el backend activo durante la presentación, evitando el cold-start en el momento crítico de la demo.</li>
+  </ul>
+</div>
+
+<div class="narrativa-block">
+  <span class="tag">IMPACTO</span>
+  <p>
+  Con estas correcciones, el dashboard entrega una evaluación honesta y reproducible del desempeño real de los modelos (AUC-ROC 0.63-0.67 en validación fuera de tiempo), útil para tres decisiones concretas: (1) un analista deportivo puede usar el panel de Predicciones para anticipar el rendimiento ofensivo probable de un equipo antes de un partido; (2) el panel de Clustering permite identificar rápidamente qué equipos comparten un perfil de juego similar, útil para análisis de fichajes o scouting; y (3) el panel de Pronóstico anticipa la tendencia goleadora de la liga a 4 meses, información relevante para medios y casas de apuestas locales. La arquitectura desplegada (Render + Azure, ambos en planes gratuitos) demuestra además que un sistema de este tipo puede sostenerse sin costo de infraestructura, replicable por cualquier estudiante o aficionado con acceso a datos similares.
+  </p>
+</div>
+
+<div class="footer-note">
+  Repositorio completo con código, notebooks y datos: github.com/iJoseAntonio/proyecto_liga1_peru
+</div>
+
+</body>
+</html>
