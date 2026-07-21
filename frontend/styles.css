@@ -12,6 +12,8 @@
   --text3:     #555;
   --accent:    #6c63ff;
   --green:     #15b168;
+  --green2:    #5ee2a0;
+  --blue:      #2f8fe0;
   --red:       #e24b4a;
   --yellow:    #f0a500;
   --gray:      #555;
@@ -549,8 +551,10 @@ img { display: block; }
 .team-row:hover { background: var(--surface3); }
 
 /* Zone stripes */
-.team-row.playoff-zone   { border-left-color: var(--yellow); }
-.team-row.relegation-zone{ border-left-color: var(--red); }
+.team-row.liber-zone      { border-left-color: var(--green); }
+.team-row.liber2-zone     { border-left-color: var(--green2); }
+.team-row.sudam-zone      { border-left-color: var(--blue); }
+.team-row.relegation-zone { border-left-color: var(--red); }
 
 .zone-indicator { width: 4px; }
 
@@ -567,7 +571,9 @@ img { display: block; }
   color: var(--text2);
   justify-self: center;
 }
-.pos-circle.playoff    { background: var(--yellow); color: #1a1200; }
+.pos-circle.liber      { background: var(--green);  color: #fff; }
+.pos-circle.liber2     { background: var(--green2); color: #062617; }
+.pos-circle.sudam      { background: var(--blue);   color: #fff; }
 .pos-circle.relegation { background: var(--red);    color: #fff; }
 
 .team-cell {
@@ -651,7 +657,9 @@ img { display: block; }
   color: var(--text);
 }
 .leg-dot { width: 8px; height: 8px; border-radius: 50%; }
-.playoff-dot    { background: var(--yellow); }
+.liber-dot      { background: var(--green); }
+.liber2-dot     { background: var(--green2); }
+.sudam-dot      { background: var(--blue); }
 .relegation-dot { background: var(--red); }
 
 .col-legend {

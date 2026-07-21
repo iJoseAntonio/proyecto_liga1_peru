@@ -45,8 +45,7 @@ Los datos **no provienen de Kaggle ni UCI**: son estadísticas reales de partido
 | Archivo | Contenido |
 |---|---|
 | `data/bd_liga1.csv` | Histórico completo de partidos con estadísticas local/visitante |
-| `data/partidos_liga1_2026.csv` | Calendario de la temporada 2026 vigente (usado para identificar equipos activos) |
-| `data/tabla_liga1_peru.csv` | Tabla de posiciones actual |
+| `data/partidos_liga1_2026.csv` | Calendario de la temporada 2026 vigente (resultados + fixture). La tabla de posiciones (Todos/Local/Visitante) se calcula en el cliente a partir de este archivo, no depende de un CSV pre-calculado |
 
 ---
 

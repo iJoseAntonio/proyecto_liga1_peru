@@ -107,8 +107,8 @@
 
         <!-- Error state -->
         <div id="table-error" class="error-state" style="display:none">
-          <span>⚠️ No se pudo cargar el CSV.</span>
-          <button onclick="loadCSV()">Reintentar</button>
+          <span>⚠️ No se pudo cargar el calendario de partidos.</span>
+          <button onclick="loadMatchesCSV()">Reintentar</button>
         </div>
 
         <!-- Table -->
@@ -128,7 +128,9 @@
           </div>
           <div id="standings-table"></div>
           <div class="legend-row">
-            <div class="leg-item"><div class="leg-dot playoff-dot"></div>Play-offs</div>
+            <div class="leg-item"><div class="leg-dot liber-dot"></div>Copa Libertadores</div>
+            <div class="leg-item"><div class="leg-dot liber2-dot"></div>Copa Libertadores Clasificación</div>
+            <div class="leg-item"><div class="leg-dot sudam-dot"></div>Copa Sudamericana</div>
             <div class="leg-item"><div class="leg-dot relegation-dot"></div>Descenso</div>
             <div class="leg-item"><div class="fb w" style="width:10px;height:10px"></div>Victoria</div>
             <div class="leg-item"><div class="fb e" style="width:10px;height:10px"></div>Empate</div>

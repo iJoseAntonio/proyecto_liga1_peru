@@ -1,12 +1,12 @@
 /* ═══════════════════════════════════════════════════════════════════════
    app.js  —  Liga 1 Perú Dashboard
-   Lee tabla_liga1_peru.csv con PapaParse e inyecta los datos en el DOM.
+   Lee partidos_liga1_2026.csv con PapaParse; la tabla de posiciones se
+   calcula en el cliente a partir de los resultados (ver computeStandingsFromMatches).
    ═══════════════════════════════════════════════════════════════════════ */
 
 'use strict';
 
 // ── CONFIGURACIÓN ────────────────────────────────────────────────────────
-const CSV_PATH         = 'data/tabla_liga1_peru.csv';
 const MATCHES_CSV_PATH = 'data/partidos_liga1_2026.csv';
 const API_URL          = 'https://proyecto-liga1-peru.onrender.com';
 
@@ -39,7 +39,7 @@ const TEAM_IDS = {
   'Atletico Grau':      282538,
   'Sport Huancayo':     33895,
   'ADC Juan Pablo II':  511206,
-  'CD Juan Pablo II':   511206,   // alias: nombre en tabla_liga1_peru.csv
+  'CD Juan Pablo II':   511206,   // alias: variante de nombre vista en el CSV de partidos
 };
 
 // Normaliza nombres inconsistentes entre CSVs
@@ -47,9 +47,16 @@ const TEAM_NAME_MAP = {
   'CD Juan Pablo II': 'ADC Juan Pablo II',
 };
 
-// Zonas de la tabla (posiciones)
-const PLAYOFF_POS    = [1];         // Amarillo
-const RELEGATION_POS = [17, 18];    // Rojo
+// Zonas de la tabla, según posición en la tabla GENERAL (Todos), no en la vista filtrada
+const LIBER_POS        = [1, 2];        // Copa Libertadores — verde
+const LIBER_CLASIF_POS = [3, 4];        // Copa Libertadores Clasificación — verde claro
+const SUDAM_POS        = [5, 6, 7, 8];  // Copa Sudamericana — azul
+const RELEGATION_POS   = [17, 18];      // Descenso — rojo
+
+// Mapa equipo → zona ('liber' | 'liber2' | 'sudam' | 'descenso' | ''), calculado
+// siempre sobre la tabla general (computeStandingsFromMatches('all')), sin importar
+// qué sub-pestaña (Todos/Local/Visitante) esté activa.
+let ZONE_MAP = {};
 
 // Partidos cargados dinámicamente desde partidos_liga1_2026.csv
 let MATCHES = {};
@@ -58,7 +65,6 @@ let MATCHES = {};
 let currentRound  = 17;
 let ROUND_MAX     = 17;
 const ROUND_MIN   = 1;
-let standingsData = [];
 const predCache   = {};
 let _statsLoaded  = false;
 let _rendLoaded   = false;
@@ -210,37 +216,90 @@ function loadMatchesCSV() {
       renderMatches(currentRound);
       renderDestacado(currentRound);
       if (isPredTabActive()) renderPredictionsTab(currentRound);
-    },
-  });
-}
 
-// ── CSV LOADER ────────────────────────────────────────────────────────────
-function loadCSV() {
-  $loading().style.display  = 'flex';
-  $error().style.display    = 'none';
-  $tableWrap().style.display = 'none';
-
-  Papa.parse(CSV_PATH, {
-    download: true,
-    header:   true,
-    skipEmptyLines: true,
-    complete: (results) => {
-      if (!results.data || results.data.length === 0) {
-        showError();
-        return;
-      }
-      standingsData = results.data;
+      // La tabla de posiciones se calcula a partir de estos mismos partidos
+      computeZoneMap();
       $loading().style.display   = 'none';
+      $error().style.display     = 'none';
       $tableWrap().style.display = 'block';
-      renderStandings(standingsData);
+      const activeFilter = document.querySelector('.sub-tab.active');
+      renderStandings(computeFilteredStandings(activeFilter ? activeFilter.dataset.filter : 'all'));
     },
-    error: () => showError(),
+    error: () => showStandingsError(),
   });
 }
 
-function showError() {
+function showStandingsError() {
   $loading().style.display = 'none';
   $error().style.display   = 'flex';
+}
+
+// ── TABLA DE POSICIONES — calculada desde los partidos (no un CSV estático) ──
+function computeStandingsFromMatches(filter) {
+  const sides = filter === 'home' ? ['home'] : filter === 'away' ? ['away'] : ['home', 'away'];
+  const teams = {};
+
+  Object.values(MATCHES).forEach(roundMatches => {
+    roundMatches.forEach(m => {
+      if (m.sh === null) return; // partido no jugado
+
+      sides.forEach(side => {
+        const rawName = side === 'home' ? m.homeName : m.awayName;
+        const team    = TEAM_NAME_MAP[rawName] || rawName;
+        const gf      = side === 'home' ? m.sh : m.sa;
+        const ga      = side === 'home' ? m.sa : m.sh;
+
+        if (!teams[team]) teams[team] = { pj:0, pg:0, pe:0, pp:0, gf:0, ga:0, forma:[] };
+        const t = teams[team];
+        t.pj++; t.gf += gf; t.ga += ga;
+        if      (gf > ga)  { t.pg++; t.forma.push('V'); }
+        else if (gf === ga) { t.pe++; t.forma.push('E'); }
+        else               { t.pp++; t.forma.push('D'); }
+      });
+    });
+  });
+
+  const result = Object.entries(teams).map(([name, s]) => {
+    const dif = s.gf - s.ga;
+    return {
+      Equipo:    name,
+      PJ:        s.pj,
+      PG:        s.pg,
+      PE:        s.pe,
+      PP:        s.pp,
+      DIF:       dif >= 0 ? `+${dif}` : `${dif}`,
+      Goles:     `${s.gf}:${s.ga}`,
+      Puntos:    s.pg * 3 + s.pe,
+      Ultimos_5: s.forma.slice(-5).join(''),
+      _dif:      dif,
+    };
+  });
+
+  // Orden: Pts → DIF → Goles a favor
+  result.sort((a, b) => b.Puntos - a.Puntos || b._dif - a._dif || 0);
+  result.forEach((r, i) => { r.Posicion = i + 1; });
+  return result;
+}
+
+function computeFilteredStandings(filter) {
+  if (!Object.keys(MATCHES).length) return [];
+  return computeStandingsFromMatches(filter);
+}
+
+// Zona de cada equipo según su posición en la tabla GENERAL — independiente
+// de la sub-pestaña (Todos/Local/Visitante) que esté activa en pantalla.
+function computeZoneMap() {
+  const general = computeStandingsFromMatches('all');
+  const map = {};
+  general.forEach(row => {
+    const pos = row.Posicion;
+    if      (LIBER_POS.includes(pos))        map[row.Equipo] = 'liber';
+    else if (LIBER_CLASIF_POS.includes(pos)) map[row.Equipo] = 'liber2';
+    else if (SUDAM_POS.includes(pos))        map[row.Equipo] = 'sudam';
+    else if (RELEGATION_POS.includes(pos))   map[row.Equipo] = 'descenso';
+    else                                     map[row.Equipo] = '';
+  });
+  ZONE_MAP = map;
 }
 
 // ── RENDER STANDINGS ──────────────────────────────────────────────────────
@@ -267,14 +326,16 @@ function renderStandings(data) {
     const pts = nv(row['Puntos']);
     const forma = (row['Ultimos_5'] || '').trim();
 
-    // Separadores de zona
-    if (pos === 2)  html += `<div class="zone-sep"></div>`;
-    if (pos === 17) html += `<div class="zone-sep"></div>`;
+    // Separadores de zona (según la posición mostrada en esta vista)
+    if (pos === 2 || pos === 4 || pos === 8 || pos === 16) html += `<div class="zone-sep"></div>`;
 
-    const isPlayoff    = PLAYOFF_POS.includes(pos);
-    const isRelegation = RELEGATION_POS.includes(pos);
-    const rowClass = isPlayoff ? 'playoff-zone' : isRelegation ? 'relegation-zone' : '';
-    const circleClass = isPlayoff ? 'playoff' : isRelegation ? 'relegation' : '';
+    // El color de zona sigue SIEMPRE la posición real en la tabla general,
+    // sin importar la sub-pestaña (Todos/Local/Visitante) activa.
+    const zone = ZONE_MAP[name] || '';
+    const rowClassMap    = { liber: 'liber-zone', liber2: 'liber2-zone', sudam: 'sudam-zone', descenso: 'relegation-zone' };
+    const circleClassMap = { liber: 'liber',      liber2: 'liber2',      sudam: 'sudam',      descenso: 'relegation' };
+    const rowClass    = rowClassMap[zone]    || '';
+    const circleClass = circleClassMap[zone] || '';
 
     const formaHtml = forma.split('').map(formBox).join('');
 
@@ -2222,52 +2283,6 @@ async function renderRendimientoTab() {
   }
 }
 
-function computeFilteredStandings(filter) {
-  if (filter === 'all' || !Object.keys(MATCHES).length) return standingsData;
-
-  const isHome = filter === 'home';
-  const teams  = {};
-
-  Object.values(MATCHES).forEach(roundMatches => {
-    roundMatches.forEach(m => {
-      if (m.sh === null) return; // partido no jugado
-
-      const rawName = isHome ? m.homeName : m.awayName;
-      const team    = TEAM_NAME_MAP[rawName] || rawName;
-      const gf      = isHome ? m.sh : m.sa;
-      const ga      = isHome ? m.sa : m.sh;
-
-      if (!teams[team]) teams[team] = { pj:0, pg:0, pe:0, pp:0, gf:0, ga:0, forma:[] };
-      const t = teams[team];
-      t.pj++; t.gf += gf; t.ga += ga;
-      if      (gf > ga)  { t.pg++; t.forma.push('V'); }
-      else if (gf === ga) { t.pe++; t.forma.push('E'); }
-      else               { t.pp++; t.forma.push('D'); }
-    });
-  });
-
-  const result = Object.entries(teams).map(([name, s]) => {
-    const dif = s.gf - s.ga;
-    return {
-      Equipo:    name,
-      PJ:        s.pj,
-      PG:        s.pg,
-      PE:        s.pe,
-      PP:        s.pp,
-      DIF:       dif >= 0 ? `+${dif}` : `${dif}`,
-      Goles:     `${s.gf}:${s.ga}`,
-      Puntos:    s.pg * 3 + s.pe,
-      Ultimos_5: s.forma.slice(-5).join(''),
-      _dif:      dif,
-    };
-  });
-
-  // Orden: Pts → DIF → Goles a favor
-  result.sort((a, b) => b.Puntos - a.Puntos || b._dif - a._dif || 0);
-  result.forEach((r, i) => { r.Posicion = i + 1; });
-  return result;
-}
-
 function setupSubTabs() {
   document.querySelectorAll('.sub-tab').forEach(tab => {
     tab.addEventListener('click', () => {
@@ -2297,11 +2312,9 @@ document.addEventListener('DOMContentLoaded', () => {
   buildRoundSelect();
   setupRoundNav();
 
-  // Load matches from CSV (renders after load)
+  // Load matches from CSV — la tabla de posiciones se calcula a partir de esto
+  // (ver el callback "complete" de loadMatchesCSV)
   loadMatchesCSV();
-
-  // Load CSV for standings
-  loadCSV();
 
   // Progress bar temporada
   updateProgress();
