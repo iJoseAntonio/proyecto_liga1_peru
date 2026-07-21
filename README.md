@@ -10,7 +10,7 @@ Trabajo final del curso **Minería de Datos (2026-I)** — UNMSM, Facultad de In
 
 | Recurso | URL |
 |---|---|
-| **Dashboard (frontend)** | https://brave-hill-0bd23c910.7.azurestaticapps.net |
+| **Dashboard (frontend)** | https://gentle-bay-0b773970f.7.azurestaticapps.net |
 | **API (backend)** | https://proyecto-liga1-peru.onrender.com |
 | **Repositorio** | https://github.com/iJoseAntonio/proyecto_liga1_peru |
 
