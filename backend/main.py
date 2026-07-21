@@ -259,15 +259,16 @@ def _load_date_round_map() -> dict:
         mapping = {}
         for _, row in df_p.iterrows():
             jornada = str(row.get('Jornada', '')).strip()
-            m = re.search(r'(\d+)', jornada)
+            m = re.match(r'^(.*?)\s*(\d+)$', jornada)
             if not m:
                 continue
-            rnd = int(m.group(1))
+            etapa = m.group(1).strip()  # "Apertura" o "Clausura"
+            rnd = int(m.group(2))
             fecha = pd.to_datetime(
                 str(row.get('fecha', '')).strip(), format='%d/%m/%Y', errors='coerce'
             )
             if pd.notna(fecha):
-                mapping[fecha.normalize()] = rnd
+                mapping[fecha.normalize()] = (etapa, rnd)
         print(f"Round map cargado: {len(set(mapping.values()))} jornadas.")
         return mapping
     except Exception as e:
@@ -292,7 +293,8 @@ def _precompute_performance():
     for _, match in post.iterrows():
         prior = df_historico[df_historico['fecha'] < match['fecha']]
         fecha_norm = match['fecha'].normalize()
-        rnd_num = date_round.get(fecha_norm)
+        etapa_num = date_round.get(fecha_norm)
+        etapa, rnd_num = etapa_num if etapa_num else (None, None)
 
         for team, is_local, sfx in [
             (match.get('equipo_local'),     1, '_local'),
@@ -320,6 +322,7 @@ def _precompute_performance():
 
             records.append({
                 'fecha':    match['fecha'],
+                'etapa':    etapa,
                 'rnd':      rnd_num,
                 'xg_ok':   (xg_c  == 1) == (real_xg    >= 1.5),
                 'tiros_ok':(tir_c == 1) == (real_tiros  >  4),
@@ -345,18 +348,25 @@ def _precompute_performance():
                 for d in grp: rmap[d] = rnd
                 rnd += 1; grp = [dates[i]]
         for d in grp: rmap[d] = rnd
-        df_r['rnd'] = df_r['fecha'].map(rmap)
+        df_r['rnd']   = df_r['fecha'].map(rmap)
+        df_r['etapa'] = df_r['etapa'].fillna('Jornada')
 
     rounds_out = []
-    for r, g in df_r.groupby('rnd'):
+    for (etapa, r), g in df_r.groupby(['etapa', 'rnd']):
         rounds_out.append({
-            'jornada':   int(r),
-            'fecha':     g['fecha'].min().strftime('%d/%m/%Y'),
-            'total':     len(g),
-            'xg_pct':    round(float(g['xg_ok'].mean())    * 100, 1),
-            'tiros_pct': round(float(g['tiros_ok'].mean()) * 100, 1),
-            'goles_pct': round(float(g['goles_ok'].mean()) * 100, 1),
+            'etapa':      etapa,
+            'jornada':    int(r),
+            'fecha':      g['fecha'].min().strftime('%d/%m/%Y'),
+            'total':      len(g),
+            'xg_pct':     round(float(g['xg_ok'].mean())    * 100, 1),
+            'tiros_pct':  round(float(g['tiros_ok'].mean()) * 100, 1),
+            'goles_pct':  round(float(g['goles_ok'].mean()) * 100, 1),
+            '_fecha_min': g['fecha'].min(),
         })
+
+    rounds_out.sort(key=lambda r: r['_fecha_min'])
+    for r in rounds_out:
+        del r['_fecha_min']
 
     _perf_by_round = rounds_out
     print(f"Rendimiento precomputado: {len(rounds_out)} rondas, {len(records)} predicciones.")

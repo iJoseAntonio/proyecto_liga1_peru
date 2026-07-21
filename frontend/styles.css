@@ -1237,7 +1237,7 @@ img { display: block; }
 
 .rend-table-head {
   display: grid;
-  grid-template-columns: 60px 90px 38px 1fr 1fr 1fr;
+  grid-template-columns: 96px 78px 34px 1fr 1fr 1fr;
   gap: 8px;
   padding: 6px 8px;
   font-size: 10px;
@@ -1254,7 +1254,7 @@ img { display: block; }
 
 .rend-table-row {
   display: grid;
-  grid-template-columns: 60px 90px 38px 1fr 1fr 1fr;
+  grid-template-columns: 96px 78px 34px 1fr 1fr 1fr;
   gap: 8px;
   padding: 10px 8px;
   align-items: center;

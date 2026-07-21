@@ -2098,7 +2098,7 @@ async function renderRendimientoTab() {
           </div>
           ${rounds.map((r, i) => `
             <div class="rend-table-row" style="animation-delay:${i * 0.05}s">
-              <span class="rend-jornada">${r.jornada}</span>
+              <span class="rend-jornada">${r.etapa ? `${r.etapa} ${r.jornada}` : r.jornada}</span>
               <span class="rend-fecha">${r.fecha}</span>
               <span class="rend-n">${r.total}</span>
               <span class="acc-badge ${accColor(r.xg_pct)}">${r.xg_pct}%</span>
