@@ -4,35 +4,35 @@
     "modelos": [
       {
         "nombre": "XGBoost",
-        "accuracy": 0.6564,
-        "auc_roc": 0.6538,
-        "f1": 0.5338,
-        "precision": 0.5355,
-        "recall": 0.5321
+        "accuracy": 0.6481,
+        "auc_roc": 0.6289,
+        "f1": 0.5128,
+        "precision": 0.4878,
+        "recall": 0.5405
       },
       {
         "nombre": "LightGBM",
-        "accuracy": 0.6517,
-        "auc_roc": 0.6604,
-        "f1": 0.5505,
-        "precision": 0.5263,
-        "recall": 0.5769
+        "accuracy": 0.6574,
+        "auc_roc": 0.6445,
+        "f1": 0.5432,
+        "precision": 0.5,
+        "recall": 0.5946
       },
       {
         "nombre": "Random Forest",
-        "accuracy": 0.6256,
-        "auc_roc": 0.631,
-        "f1": 0.538,
-        "precision": 0.4946,
-        "recall": 0.5897
+        "accuracy": 0.5741,
+        "auc_roc": 0.5915,
+        "f1": 0.4889,
+        "precision": 0.4151,
+        "recall": 0.5946
       },
       {
         "nombre": "Logistic Regression",
-        "accuracy": 0.6327,
-        "auc_roc": 0.6655,
-        "f1": 0.5481,
-        "precision": 0.5027,
-        "recall": 0.6026
+        "accuracy": 0.6019,
+        "auc_roc": 0.6365,
+        "f1": 0.5057,
+        "precision": 0.44,
+        "recall": 0.5946
       }
     ]
   },
@@ -41,35 +41,35 @@
     "modelos": [
       {
         "nombre": "XGBoost",
-        "accuracy": 0.6517,
-        "auc_roc": 0.6303,
-        "f1": 0.5421,
-        "precision": 0.58,
-        "recall": 0.5088
+        "accuracy": 0.6111,
+        "auc_roc": 0.6724,
+        "f1": 0.5714,
+        "precision": 0.6667,
+        "recall": 0.5
       },
       {
         "nombre": "LightGBM",
-        "accuracy": 0.6327,
-        "auc_roc": 0.6212,
-        "f1": 0.5455,
-        "precision": 0.5471,
-        "recall": 0.5439
+        "accuracy": 0.6204,
+        "auc_roc": 0.6755,
+        "f1": 0.6168,
+        "precision": 0.6471,
+        "recall": 0.5893
       },
       {
         "nombre": "Random Forest",
-        "accuracy": 0.6114,
-        "auc_roc": 0.6249,
-        "f1": 0.5233,
-        "precision": 0.5202,
-        "recall": 0.5263
+        "accuracy": 0.6111,
+        "auc_roc": 0.6538,
+        "f1": 0.5962,
+        "precision": 0.6458,
+        "recall": 0.5536
       },
       {
         "nombre": "Logistic Regression",
-        "accuracy": 0.6161,
-        "auc_roc": 0.644,
-        "f1": 0.5345,
-        "precision": 0.5254,
-        "recall": 0.5439
+        "accuracy": 0.6111,
+        "auc_roc": 0.6875,
+        "f1": 0.5962,
+        "precision": 0.6458,
+        "recall": 0.5536
       }
     ]
   },
@@ -78,35 +78,35 @@
     "modelos": [
       {
         "nombre": "XGBoost",
-        "accuracy": 0.6209,
-        "auc_roc": 0.5688,
-        "f1": 0.375,
-        "precision": 0.5393,
-        "recall": 0.2874
+        "accuracy": 0.5833,
+        "auc_roc": 0.5456,
+        "f1": 0.4,
+        "precision": 0.4286,
+        "recall": 0.375
       },
       {
         "nombre": "LightGBM",
-        "accuracy": 0.6114,
-        "auc_roc": 0.5625,
-        "f1": 0.3835,
-        "precision": 0.5152,
-        "recall": 0.3054
+        "accuracy": 0.6204,
+        "auc_roc": 0.5702,
+        "f1": 0.4225,
+        "precision": 0.4839,
+        "recall": 0.375
       },
       {
         "nombre": "Random Forest",
-        "accuracy": 0.5711,
-        "auc_roc": 0.5694,
-        "f1": 0.493,
-        "precision": 0.4632,
-        "recall": 0.5269
+        "accuracy": 0.4722,
+        "auc_roc": 0.4938,
+        "f1": 0.4124,
+        "precision": 0.3509,
+        "recall": 0.5
       },
       {
         "nombre": "Logistic Regression",
-        "accuracy": 0.6303,
-        "auc_roc": 0.647,
-        "f1": 0.5357,
-        "precision": 0.5325,
-        "recall": 0.5389
+        "accuracy": 0.5463,
+        "auc_roc": 0.5581,
+        "f1": 0.4368,
+        "precision": 0.4043,
+        "recall": 0.475
       }
     ]
   }
